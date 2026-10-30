@@ -357,3 +357,33 @@ def test_complete_experiment_card_fields_are_recognized() -> None:
     assert FindingCode.MISSING_EPISTEMIC_CLASSIFICATION.value not in codes(report)
     assert FindingCode.MISSING_ASSUMPTION_REGISTER.value not in codes(report)
     assert FindingCode.INCOMPLETE_EXPERIMENT_CARD.value not in codes(report)
+
+
+def test_unsupported_algerian_market_generalization_is_flagged() -> None:
+    report = audit_output(
+        request="Assess a digital product launch in Algeria.",
+        analysis="The segment has not been researched.",
+        critique="Do not assume payment habits without evidence.",
+        answer=(
+            "Decision: defer the full launch. "
+            "The Algerian market relies heavily on cash and trust. "
+            "Falsification test: gather verified segment-level payment evidence."
+        ),
+    )
+
+    assert FindingCode.UNSOURCED_CONTEXTUAL_GENERALIZATION.value in codes(report)
+
+
+def test_market_generalization_explicitly_labelled_as_hypothesis_is_allowed() -> None:
+    report = audit_output(
+        request="Assess a digital product launch in Algeria.",
+        analysis="The segment has not been researched.",
+        critique="This claim needs field validation.",
+        answer=(
+            "Decision: run a limited test. "
+            "HYPOTHESIS: Some Algerian customers may prefer cash-based settlement. "
+            "Falsification test: compare observed payment preferences in the target segment."
+        ),
+    )
+
+    assert FindingCode.UNSOURCED_CONTEXTUAL_GENERALIZATION.value not in codes(report)

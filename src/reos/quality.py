@@ -106,9 +106,9 @@ _DECISION_RE = re.compile(
     re.IGNORECASE,
 )
 _POSITIVE_DECISION_RE = re.compile(
-    r"(?:\\bproceed\\b|\\bgo ahead\\b|\\bapprove\\b|\\bbuild\\b|"
-    r"\\bstart\\b|\\bbegin\\b|\\brelease\\b|\\bgo live\\b|"
-    r"المضي\\s+قدماً|المضي\\s+قدمًا|اعتماد|ابدأ|استمر)",
+    r"(?:\bproceed\b|\bgo ahead\b|\bapprove\b|\bbuild\b|"
+    r"\bstart\b|\bbegin\b|\brelease\b|\bgo live\b|"
+    r"المضي\s+قدماً|المضي\s+قدمًا|اعتماد|ابدأ|استمر)",
     re.IGNORECASE,
 )
 _NEGATED_ACTION_RE = re.compile(

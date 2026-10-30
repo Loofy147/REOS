@@ -85,6 +85,9 @@ def test_each_turn_preserves_its_quality_report_in_audit_history() -> None:
     assert len(first.turn_history) == 1
     assert len(second.turn_history) == 2
     assert second.turn_history[0].request == "First decision question"
+    assert second.turn_history[0].analysis == first.analysis
+    assert second.turn_history[0].critique == first.critique
+    assert second.turn_history[0].response == first.answer
     assert second.turn_history[1].request == "Second decision question"
     assert second.turn_history[-1].quality_report == second.quality_report
 

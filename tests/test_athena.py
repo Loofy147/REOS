@@ -6,7 +6,7 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
-from reos.agents.athena import AthenaAgent
+from reos.agents.athena import AthenaAgent, _turn_record_from_state
 from reos.quality import EvidenceReference
 
 
@@ -150,3 +150,24 @@ def test_requires_distinct_model_instances_for_analysis_and_review() -> None:
             review_model=shared_model,
             checkpointer=InMemorySaver(),
         )
+
+
+def test_legacy_turn_without_quality_snapshot_is_marked_unaudited() -> None:
+    turn = _turn_record_from_state(
+        {
+            "request": "Historical question",
+            "analysis": "Historical analysis",
+            "critique": "Historical critique",
+            "response": "Historical answer",
+        }
+    )
+
+    assert turn.request == "Historical question"
+    assert turn.analysis == "Historical analysis"
+    assert turn.critique == "Historical critique"
+    assert turn.response == "Historical answer"
+    assert turn.quality_report.status.value == "WARN"
+    assert any(
+        finding.code.value == "LEGACY_TURN_NOT_AUDITED"
+        for finding in turn.quality_report.findings
+    )

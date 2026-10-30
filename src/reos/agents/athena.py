@@ -60,6 +60,8 @@ class AthenaTurnRecord:
     """Auditable record of one completed turn, including the evidence used."""
 
     request: str
+    analysis: str
+    critique: str
     response: str
     quality_report: QualityReport
     evidence_references: tuple[EvidenceReference, ...]
@@ -114,6 +116,8 @@ def _turn_record_from_state(turn: dict[str, Any]) -> AthenaTurnRecord:
 
     return AthenaTurnRecord(
         request=str(turn.get("request", "")),
+        analysis=str(turn.get("analysis", "")),
+        critique=str(turn.get("critique", "")),
         response=str(turn.get("response", "")),
         quality_report=quality,
         evidence_references=tuple(references),
@@ -388,6 +392,8 @@ class AthenaAgent:
             turns.append(
                 {
                     "request": state["request"],
+                    "analysis": state["analysis"],
+                    "critique": state["critique"],
                     "response": state["answer"],
                     "quality_report": state.get("quality_report", {}),
                     "evidence_references": list(state.get("evidence_references", [])),

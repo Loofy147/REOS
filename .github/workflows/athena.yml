@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feat/athena-independent-agent-v0.1
   pull_request:
     branches:
       - main

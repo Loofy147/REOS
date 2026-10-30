@@ -53,6 +53,7 @@ def test_athena_runs_analysis_independent_review_and_synthesis() -> None:
     assert len(reviewer.calls) == 1
     assert "independent" in message_text(analyst.calls[0]).lower()
     assert "challenge" in message_text(reviewer.calls[0]).lower()
+    assert "A skeptical counter-analysis." in message_text(analyst.calls[1])
 
 
 def test_memory_isolated_between_session_ids() -> None:

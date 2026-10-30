@@ -87,7 +87,33 @@ authentication mechanism. The SQLite file is persistent, sensitive application
 data. On POSIX the CLI creates/restricts it to owner-only permissions (0600);
 keep its parent directory, backups, and host access similarly protected.
 
-## 7. Enable LangSmith tracing (optional)
+## 7. Run the provider smoke test through GitHub Actions
+
+The REOS verification workflow can execute the smoke test on the ATHENA feature
+branch when both model identifiers are configured in repository variables.
+
+In GitHub, open **Settings → Secrets and variables → Actions** and add these
+repository variables:
+
+- `ATHENA_ANALYSIS_MODEL` — for example, `openai:<model-id>`
+- `ATHENA_REVIEW_MODEL` — for example, `anthropic:<model-id>`
+
+Add provider credentials as repository **Secrets**, never as variables:
+
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GOOGLE_API_KEY` or `GEMINI_API_KEY` when using Gemini
+
+The workflow runs `--doctor` first. Missing expected credentials stop the
+job before model calls. When the variables and secrets are present, the next
+push to `feat/athena-independent-agent-v0.1` automatically triggers the
+provider-backed smoke test. A manually dispatched smoke is also available
+after this workflow is present on the repository's default branch.
+
+The smoke prompt is synthetic and bounded, but valid credentials may incur
+provider charges. Do not place private project or user data in this test.
+
+## 8. Enable LangSmith tracing (optional)
 
 ```bash
 export LANGSMITH_TRACING=true
@@ -100,7 +126,7 @@ metadata to each graph run. Traces can contain prompts and generated outputs.
 Do not enable tracing for sensitive inputs unless the project's privacy,
 access, and retention settings are appropriate.
 
-## 8. Verify the local deterministic contract
+## 9. Verify the local deterministic contract
 
 ```bash
 python -m pytest -q

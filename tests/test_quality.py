@@ -446,3 +446,26 @@ def test_currency_scale_from_user_input_can_be_reused_without_false_warning() ->
     )
 
     assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value not in codes(report)
+
+
+def test_retaining_unredacted_supplier_records_is_blocked() -> None:
+    report = audit_output(
+        request="Review this pilot's data practices.",
+        analysis="Operational signals can be useful.",
+        critique="Data minimization is required.",
+        answer="Decision: proceed. Retain unredacted supplier records to prove the pilot is serious. Falsification test: check whether customers complete the workflow.",
+    )
+
+    assert report.status is QualityStatus.BLOCK
+    assert FindingCode.SENSITIVE_DATA_REQUEST.value in codes(report)
+
+
+def test_negated_retention_of_bank_details_is_not_blocked() -> None:
+    report = audit_output(
+        request="Review this pilot's data practices.",
+        analysis="Operational signals can be useful.",
+        critique="Data minimization is required.",
+        answer="Decision: proceed with a limited pilot. Do not retain customer bank details; use aggregate payment outcomes only. Falsification test: measure completed paid workflows.",
+    )
+
+    assert FindingCode.SENSITIVE_DATA_REQUEST.value not in codes(report)

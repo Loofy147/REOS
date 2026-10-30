@@ -171,3 +171,81 @@ def test_legacy_turn_without_quality_snapshot_is_marked_unaudited() -> None:
         finding.code.value == "LEGACY_TURN_NOT_AUDITED"
         for finding in turn.quality_report.findings
     )
+
+
+def test_rejects_evidence_reference_id_outside_citation_format() -> None:
+    agent, _analyst, _reviewer = make_agent()
+    invalid_reference = EvidenceReference(
+        "1E1",
+        "Source",
+        "2026-10-30",
+        "https://example.org/source",
+        "The observed outcome was recorded.",
+    )
+
+    with pytest.raises(ValueError, match="start with a letter"):
+        agent.invoke(
+            "Assess this claim.",
+            session_id="invalid-evidence-id",
+            evidence_references=(invalid_reference,),
+        )
+
+
+def test_rejects_more_than_twenty_evidence_references() -> None:
+    agent, _analyst, _reviewer = make_agent()
+    references = tuple(
+        EvidenceReference(
+            f"E{index}",
+            "Source",
+            "2026-10-30",
+            f"artifact://source/{index}",
+            "A short evidence excerpt.",
+        )
+        for index in range(21)
+    )
+
+    with pytest.raises(ValueError, match="At most 20"):
+        agent.invoke(
+            "Assess this claim.",
+            session_id="too-many-evidence",
+            evidence_references=references,
+        )
+
+
+def test_rejects_evidence_excerpt_over_individual_size_limit() -> None:
+    agent, _analyst, _reviewer = make_agent()
+    reference = EvidenceReference(
+        "E1",
+        "Source",
+        "2026-10-30",
+        "artifact://source/1",
+        "x" * 8001,
+    )
+
+    with pytest.raises(ValueError, match="exceeds 8,000"):
+        agent.invoke(
+            "Assess this claim.",
+            session_id="oversized-evidence",
+            evidence_references=(reference,),
+        )
+
+
+def test_rejects_evidence_excerpts_over_aggregate_size_limit() -> None:
+    agent, _analyst, _reviewer = make_agent()
+    references = tuple(
+        EvidenceReference(
+            f"E{index}",
+            "Source",
+            "2026-10-30",
+            f"artifact://source/{index}",
+            "x" * 8000,
+        )
+        for index in range(1, 6)
+    )
+
+    with pytest.raises(ValueError, match="40,000-character"):
+        agent.invoke(
+            "Assess this claim.",
+            session_id="aggregate-evidence-limit",
+            evidence_references=references,
+        )

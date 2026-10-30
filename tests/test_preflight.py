@@ -66,3 +66,21 @@ def test_preflight_rejects_identical_model_specs(tmp_path, monkeypatch) -> None:
         item["name"] == "model separation" and item["status"] == "FAIL"
         for item in report["checks"]
     )
+
+
+def test_preflight_does_not_claim_independence_from_different_providers(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("reos.preflight.importlib.util.find_spec", lambda _name: object())
+    report = build_preflight_report(
+        analysis_model="openai:model-a",
+        review_model="anthropic:model-b",
+        database_path=tmp_path / "data" / "athena.sqlite",
+        environ={
+            "OPENAI_API_KEY": "redacted",
+            "ANTHROPIC_API_KEY": "redacted",
+        },
+    )
+
+    diversity = next(item for item in report["checks"] if item["name"] == "provider diversity")
+    assert diversity["status"] == "INFO"
+    assert "does not establish statistical independence" in diversity["detail"]
+    assert not any(item["name"] == "provider independence" for item in report["checks"])

@@ -213,6 +213,16 @@ def main(argv: list[str] | None = None) -> int:
         if finding.excerpt:
             print(f"  Evidence: {finding.excerpt}")
     persistence = "ephemeral" if args.live_smoke else "SQLite"
+    evidence_count = sum(len(turn.evidence_references) for turn in response.turn_history)
+    print(
+        f"\nAudit history: {len(response.turn_history)} turns | "
+        f"Registered evidence references retained: {evidence_count}"
+    )
+    for index, turn in enumerate(response.turn_history, start=1):
+        print(
+            f"  Turn {index}: {turn.quality_report.status.value} | "
+            f"{len(turn.evidence_references)} evidence references"
+        )
     print(f"\nSession: {response.session_id} | Turns: {response.turns_count} | State: {persistence}")
     return 0
 

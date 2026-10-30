@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sqlite3
 import sys
@@ -8,6 +9,7 @@ import uuid
 from pathlib import Path
 
 from reos.preflight import build_preflight_report
+from reos.quality import EvidenceReference
 
 
 SMOKE_REQUEST = (
@@ -37,6 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=os.environ.get("ATHENA_DB_PATH", "athena-checkpoints.sqlite"),
         help="SQLite checkpoint database path (default: ATHENA_DB_PATH or ./athena-checkpoints.sqlite).",
     )
+    parser.add_argument(
+        "--evidence-file",
+        type=Path,
+        help="JSON evidence register. Each reference needs reference_id, source, observed_at, locator, and excerpt.",
+    )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
         "--doctor",
@@ -63,6 +70,42 @@ def open_checkpoint_database(database_path: Path) -> sqlite3.Connection:
     return sqlite3.connect(str(database_path), check_same_thread=False)
 
 
+def load_evidence_references(path: Path | None) -> tuple[EvidenceReference, ...]:
+    """Load explicit, user-reviewed evidence excerpts; never fetch URLs implicitly."""
+    if path is None:
+        return ()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ValueError(f"Could not read evidence register {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Evidence register is not valid JSON: {exc}") from exc
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("references"), list):
+        raise ValueError("Evidence register must be an object with a 'references' array.")
+
+    references: list[EvidenceReference] = []
+    required = ("reference_id", "source", "observed_at", "locator", "excerpt")
+    for index, item in enumerate(payload["references"]):
+        if not isinstance(item, dict):
+            raise ValueError(f"Evidence reference at index {index} must be an object.")
+        missing = [key for key in required if not isinstance(item.get(key), str) or not item[key].strip()]
+        if missing:
+            raise ValueError(
+                f"Evidence reference at index {index} is missing non-empty fields: {', '.join(missing)}."
+            )
+        references.append(
+            EvidenceReference(
+                reference_id=item["reference_id"].strip(),
+                source=item["source"].strip(),
+                observed_at=item["observed_at"].strip(),
+                locator=item["locator"].strip(),
+                excerpt=item["excerpt"].strip(),
+            )
+        )
+    return tuple(references)
+
+
 def _print_preflight(report: dict[str, object]) -> None:
     checks = report["checks"]
     print("ATHENA preflight: READY" if report["ok"] else "ATHENA preflight: BLOCKED")
@@ -72,6 +115,12 @@ def _print_preflight(report: dict[str, object]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    try:
+        evidence_references = load_evidence_references(args.evidence_file)
+    except ValueError as exc:
+        print(f"ATHENA evidence register invalid: {exc}", file=sys.stderr)
+        return 2
 
     analysis_spec = os.environ.get("ATHENA_ANALYSIS_MODEL", "").strip()
     review_spec = os.environ.get("ATHENA_REVIEW_MODEL", "").strip()
@@ -138,7 +187,11 @@ def main(argv: list[str] | None = None) -> int:
             review_model=review_model,
             checkpointer=checkpointer,
         )
-        response = agent.invoke(request, session_id=session_id)
+        response = agent.invoke(
+            request,
+            session_id=session_id,
+            evidence_references=evidence_references,
+        )
     except Exception as exc:  # CLI boundary: surface actionable errors without a traceback by default.
         print(f"ATHENA run failed: {exc}", file=sys.stderr)
         return 1

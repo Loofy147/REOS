@@ -180,20 +180,22 @@ _NEGATIVE_DECISION_RE = re.compile(
 _SENSITIVE_RE = re.compile(
     r"(?:raw\s+(?:sales|customer|client|supplier|financial|business)\s+(?:records?|data|lists?)|"
     r"unredacted\s+(?:sales|customer|supplier|financial)\s+(?:records?|data|lists?)|"
-    r"supplier\s+lists?|customer\s+lists?|bank\s+statements?|account\s+numbers?|"
+    r"identifiable\s+(?:customer|supplier|financial)\s+(?:records?|data)|"
+    r"supplier\s+lists?|customer\s+lists?|bank\s+(?:statements?|details?)|account\s+(?:numbers?|details?)|"
     r"identity\s+documents?|سجلات\s+مبيعات\s+(?:خام|كاملة|حقيقية)|"
     r"قائمة\s+الموردين|قوائم\s+الموردين|بيانات\s+العملاء\s+الكاملة|"
     r"كشوف\s+الحساب|أرقام\s+الحسابات|وثائق\s+الهوية)",
     re.IGNORECASE,
 )
 _REQUEST_VERB_RE = re.compile(
-    r"(?:require|ask|request|upload|send|share|provide|collect|اطلب|اطلبوا|اشترط|"
-    r"ارفع|أرسل|ارسل|شارك|زوّد|زود|اجمع)",
+    r"(?:require|ask|request|upload|send|share|provide|collect|obtain|gather|store|retain|capture|record|demand|"
+    r"اطلب|اطلبوا|اشترط|ارفع|أرسل|ارسل|شارك|زوّد|زود|اجمع|احتفظ|خزّن|خزن|سجّل|سجل)",
     re.IGNORECASE,
 )
 _NEGATED_REQUEST_RE = re.compile(
     r"(?:\b(?:do not|don't|never|avoid|not to)\s+(?:require|ask|request|upload|send|"
-    r"share|provide|collect)\b|لا\s+(?:تطلب|تجمع|ترفع|ترسل|تشارك|تشترط|تزود))",
+    r"share|provide|collect|obtain|gather|store|retain|capture|record|demand)\b|"
+    r"لا\s+(?:تطلب|تجمع|ترفع|ترسل|تشارك|تشترط|تزود|تحتفظ|تخزن|تسجل))",
     re.IGNORECASE,
 )
 

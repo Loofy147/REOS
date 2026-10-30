@@ -208,7 +208,7 @@ def _evidence_context(references: list[dict[str, str]]) -> str:
     )
 
 
-class AthenaAgent:class AthenaAgent:
+class AthenaAgent:
     """Analysis → adversarial challenge → synthesis → deterministic quality gate.
 
     Pass separate model instances for analysis and review. For lower correlated
@@ -286,7 +286,7 @@ class AthenaAgent:class AthenaAgent:
             answer = _required_content_text(result, stage="synthesis")
             return {"answer": answer}
 
-        def quality_gate(        def quality_gate(state: AthenaState, config: RunnableConfig) -> dict[str, object]:
+        def quality_gate(state: AthenaState, config: RunnableConfig) -> dict[str, object]:
             references = tuple(
                 EvidenceReference(
                     reference_id=item["reference_id"],

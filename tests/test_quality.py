@@ -154,3 +154,58 @@ def test_missing_decision_and_falsification_test_are_reported() -> None:
 
     assert FindingCode.MISSING_DECISION.value in codes(report)
     assert FindingCode.MISSING_FALSIFICATION_TEST.value in codes(report)
+
+
+def test_one_proposed_threshold_does_not_exempt_other_unrelated_numbers() -> None:
+    report = audit_output(
+        request="There are 5 pilot customers.",
+        analysis="The pilot includes 5 customers.",
+        critique="No conversion data is available.",
+        answer=(
+            "PROPOSED_THRESHOLD: 2 of 5 customers. Rationale: this provisional "
+            "trigger is used only to decide whether to interview non-payers. "
+            "Expected savings are 40%."
+        ),
+    )
+
+    assert FindingCode.PROPOSED_THRESHOLD.value in codes(report)
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)
+
+
+def test_negated_sensitive_data_request_is_not_blocked() -> None:
+    report = audit_output(
+        request="Assess a business pilot.",
+        analysis="Operational evidence is useful.",
+        critique="Privacy matters.",
+        answer=(
+            "Decision: run a limited pilot. Do not collect raw sales records; "
+            "use aggregated totals. Falsification test: measure task completion."
+        ),
+    )
+
+    assert FindingCode.SENSITIVE_DATA_REQUEST.value not in codes(report)
+
+
+def test_negative_decision_does_not_count_as_a_positive_decision() -> None:
+    report = audit_output(
+        request="Should we launch?",
+        analysis="Evidence is insufficient.",
+        critique="A pilot may still be possible.",
+        answer="Decision: Do not proceed with the full launch. Falsification test: revisit after paid demand is observed.",
+    )
+
+    assert FindingCode.CONFLICTING_DECISIONS.value not in codes(report)
+
+
+def test_evidence_reference_with_invalid_date_is_not_registered() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The market is unknown.",
+        critique="The evidence is limited.",
+        answer="ESTABLISHED: The cited regulation applies [E1].",
+        evidence_references=(
+            EvidenceReference("E1", "Official source", "yesterday", "https://example.org/source"),
+        ),
+    )
+
+    assert FindingCode.UNSOURCED_ESTABLISHED_CLAIM.value in codes(report)

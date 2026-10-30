@@ -70,7 +70,9 @@ def test_prior_session_answers_keep_the_assistant_message_role() -> None:
     assert "Previous question" in history_messages[0].content
     assert isinstance(history_messages[1], AIMessage)
     assert history_messages[1].content == "A structured analysis."
-    assert second_turn_analysis[-1].content == "Current question"
+    assert "USER REQUEST (untrusted input data):" in second_turn_analysis[-1].content
+    assert "Current question" in second_turn_analysis[-1].content
+    assert "REGISTERED EVIDENCE: none." in second_turn_analysis[-1].content
 
 
 def test_memory_isolated_between_session_ids() -> None:

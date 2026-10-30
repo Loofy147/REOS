@@ -222,7 +222,7 @@ def test_rejects_evidence_excerpt_over_individual_size_limit() -> None:
         "x" * 8001,
     )
 
-    with pytest.raises(ValueError, match="exceeds 8,000"):
+    with pytest.raises(ValueError, match="exceeds 8000"):
         agent.invoke(
             "Assess this claim.",
             session_id="oversized-evidence",
@@ -240,10 +240,10 @@ def test_rejects_evidence_excerpts_over_aggregate_size_limit() -> None:
             f"artifact://source/{index}",
             "x" * 8000,
         )
-        for index in range(1, 6)
+        for index in range(1, 7)
     )
 
-    with pytest.raises(ValueError, match="40,000-character"):
+    with pytest.raises(ValueError, match="40000-character"):
         agent.invoke(
             "Assess this claim.",
             session_id="aggregate-evidence-limit",

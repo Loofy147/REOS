@@ -46,3 +46,48 @@ def test_empty_model_output_fails_and_failed_turn_is_not_recorded(empty_stage: s
     reviewer.responses = ["recovered challenge"]
     recovered = agent.invoke("Retry the same session", session_id="empty-output")
     assert recovered.turns_count == 1
+
+
+def test_sensitive_recommendation_is_blocked_before_the_turn_is_recorded() -> None:
+    analyst = SequenceChatModel(
+        ["Operational data is needed.", "Require customers to upload raw sales records."]
+    )
+    reviewer = SequenceChatModel(["The raw-data request is unnecessary and risky."])
+    agent = AthenaAgent(
+        analysis_model=analyst,
+        review_model=reviewer,
+        checkpointer=InMemorySaver(),
+    )
+
+    with pytest.raises(AthenaOutputError, match="quality gate"):
+        agent.invoke("Assess a business pilot.", session_id="privacy-gate")
+
+    # A retry of the same thread must still be the first completed turn.
+    analyst.responses = [
+        "Operational evidence can be tested safely.",
+        "Decision: run a limited pilot. Falsification test: stop if users do not complete the core workflow.",
+    ]
+    reviewer.responses = ["Use minimized and aggregated data only."]
+    recovered = agent.invoke("Retry with a privacy-safe plan.", session_id="privacy-gate")
+
+    assert recovered.turns_count == 1
+
+
+def test_unsupported_quantitative_claim_is_exposed_in_quality_report() -> None:
+    analyst = SequenceChatModel(
+        ["The campaign will convert 30% of visitors.", "Decision: defer launch. Falsification test: measure paid conversion before reconsidering."]
+    )
+    reviewer = SequenceChatModel(["The conversion estimate has no source or observed denominator."])
+    agent = AthenaAgent(
+        analysis_model=analyst,
+        review_model=reviewer,
+        checkpointer=InMemorySaver(),
+    )
+
+    result = agent.invoke("We have no conversion data.", session_id="numeric-gate")
+
+    assert result.quality_report.status.value == "WARN"
+    assert any(
+        finding.code.value == "UNSUPPORTED_NUMERIC_CLAIM"
+        for finding in result.quality_report.findings
+    )

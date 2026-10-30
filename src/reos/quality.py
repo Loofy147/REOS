@@ -31,6 +31,7 @@ class EvidenceReference:
     source: str
     observed_at: str
     locator: str
+    excerpt: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,19 +205,46 @@ def _metric_tokens(text: str) -> set[str]:
     return claims
 
 
-def _verified_references(
+def _matching_references(
     sentence: str, references: tuple[EvidenceReference, ...]
-) -> bool:
-    known: set[str] = set()
+) -> tuple[EvidenceReference, ...]:
+    """Return only cited references with a date, locator, and retrieved excerpt."""
+    cited_ids = {match.group(1) for match in _REFERENCE_RE.finditer(sentence)}
+    matched: list[EvidenceReference] = []
     for reference in references:
-        if not (reference.source.strip() and reference.locator.strip()):
+        if reference.reference_id not in cited_ids:
+            continue
+        if not (
+            reference.source.strip()
+            and reference.locator.strip()
+            and reference.excerpt.strip()
+        ):
             continue
         try:
             date.fromisoformat(reference.observed_at)
         except ValueError:
             continue
-        known.add(reference.reference_id)
-    return any(match.group(1) in known for match in _REFERENCE_RE.finditer(sentence))
+        matched.append(reference)
+    return tuple(matched)
+
+
+def _verified_references(
+    sentence: str, references: tuple[EvidenceReference, ...]
+) -> bool:
+    """Check registry linkage, not source authenticity or semantic entailment."""
+    return bool(_matching_references(sentence, references))
+
+
+def _numeric_claim_supported_by_reference(
+    sentence: str, references: tuple[EvidenceReference, ...]
+) -> bool:
+    claims = _metric_tokens(sentence)
+    if not claims:
+        return True
+    return any(
+        claims.issubset(_metric_tokens(reference.excerpt))
+        for reference in _matching_references(sentence, references)
+    )
 
 
 def _is_proposed_threshold(sentences: list[str], index: int) -> bool:
@@ -256,7 +284,7 @@ def audit_output(
                 continue
             if metrics.issubset(supplied_metrics):
                 continue
-            if _verified_references(sentence, evidence_references):
+            if _numeric_claim_supported_by_reference(sentence, evidence_references):
                 continue
             if _is_proposed_threshold(sentences, index):
                 findings.append(

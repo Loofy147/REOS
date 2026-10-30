@@ -48,7 +48,7 @@ The reviewer must attack claims, assumptions, numerical provenance, decision con
 | HYPOTHESIS | Plausible but unverified | State what observation could test it |
 | UNKNOWN | Required information is unavailable | Do not fill the gap with invented specifics |
 
-Only evidence references passed to `AthenaAgent.invoke(..., evidence_references=...)` are considered registered. Each reference must include an ID, source description, and observation date. A citation-looking token in generated text is not proof that a source exists. The current CLI does not yet provide a web-research ingestion workflow; without registered references, factual external claims must not be promoted to ESTABLISHED.
+Only evidence references passed to `AthenaAgent.invoke(..., evidence_references=...)` are considered registered. Each reference must include an ID, source description, observation date (ISO date), and a retrievable locator such as a URL or stable document identifier. A citation-looking token in generated text is not proof that a source exists. The current CLI does not yet provide a web-research ingestion workflow; without registered references, factual external claims must not be promoted to ESTABLISHED.
 
 Do not invent citations, laws, market facts, provider activity, measurements, experiments, or verification. Country-level, cultural, payment, and legal generalizations require actual evidence.
 

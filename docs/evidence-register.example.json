@@ -1,0 +1,11 @@
+{
+  "references": [
+    {
+      "reference_id": "E1",
+      "source": "Title or name of the inspected source",
+      "observed_at": "2026-10-30",
+      "locator": "https://example.org/source-or-stable-document-id",
+      "excerpt": "Paste the exact, relevant passage you inspected. Do not use this placeholder as evidence."
+    }
+  ]
+}

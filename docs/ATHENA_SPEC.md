@@ -67,13 +67,18 @@ chain-of-thought.
 ## Memory contract
 
 - Memory is scoped by `session_id` / LangGraph `thread_id`.
+- The CLI requires an explicit `--session-id`; it has no shared default thread.
+- Reuse an id only to continue the same logical session. Use a different id for
+  each user, project, or trust boundary. A session id is a namespace, not an
+  authentication or authorization mechanism.
 - Only prior user requests and ATHENA's published answers from that same thread
   are included in later analysis context.
 - The in-memory checkpointer is a process-local development default.
 - The CLI uses SQLite checkpoints for persistence between process runs.
-- Treat checkpoint databases as sensitive data: the CLI restricts POSIX database file
-  permissions to the invoking OS user, but operators remain responsible for directory
-  permissions, backups, retention, and access. Do not store secrets in prompts.
+- On POSIX, the CLI creates/restricts the checkpoint database file to owner-only
+  permissions (`0600`) and creates missing checkpoint directories with owner-only
+  permissions (`0700`). Operators remain responsible for existing parent
+  directories, backups, retention, and host access. Do not store secrets in prompts.
 
 ## Observability
 

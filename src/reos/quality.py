@@ -117,13 +117,13 @@ _METRIC_LABEL_PATTERN = (
     r"معدل\s+التحويل|نسبة\s+التحويل|الدقة|الاستدعاء|الهامش|الاحتفاظ|التسرب|الاحتمال|درجة\s+المخاطر"
 )
 _METRIC_AFTER_LABEL_RE = re.compile(
-    rf"(?:(?:mean|average)\\s+)?(?P<label>{_METRIC_LABEL_PATTERN})\\s*"
-    rf"(?:mean|average|is|was|of|=|:|بلغ|يساوي|وصل\\s+إلى)?\\s*"
-    rf"(?P<value>\\d+(?:[.,]\\d+)?)",
+    rf"(?:(?:mean|average)\s+)?(?P<label>{_METRIC_LABEL_PATTERN})\s*"
+    rf"(?:mean|average|is|was|of|=|:|بلغ|يساوي|وصل\s+إلى)?\s*"
+    rf"(?P<value>\d+(?:[.,]\d+)?)",
     re.IGNORECASE,
 )
 _METRIC_BEFORE_LABEL_RE = re.compile(
-    rf"(?P<value>\\d+(?:[.,]\\d+)?)\\s*(?:for|in|of)?\\s*"
+    rf"(?P<value>\d+(?:[.,]\d+)?)\s*(?:for|in|of)?\s*"
     rf"(?P<label>{_METRIC_LABEL_PATTERN})",
     re.IGNORECASE,
 )

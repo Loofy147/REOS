@@ -469,3 +469,47 @@ def test_negated_retention_of_bank_details_is_not_blocked() -> None:
     )
 
     assert FindingCode.SENSITIVE_DATA_REQUEST.value not in codes(report)
+
+
+def test_unsupported_precision_and_recall_decimals_are_flagged() -> None:
+    report = audit_output(
+        request="The benchmark has no measured quality scores yet.",
+        analysis="Mean precision was 0.79 and recall was 0.81.",
+        critique="These values have no linked run artifact.",
+        answer="UNKNOWN: model quality has not been measured. Decision: do not claim benchmark success. Assumptions: evaluation corpus is representative. Falsification test: score the fixed corpus and publish run artifacts.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)
+
+
+def test_user_reported_metric_value_is_not_flagged_when_repeated() -> None:
+    report = audit_output(
+        request="The pilot observed FPR 0.04 and precision 0.82.",
+        analysis="FPR was 0.04 and precision was 0.82 in the supplied pilot summary.",
+        critique="The pilot sample may not generalize.",
+        answer="USER_REPORTED: FPR 0.04 and precision 0.82. Decision: use only as a pilot observation. Assumptions: measurement definitions are consistent. Falsification test: reproduce the metrics on a held-out cohort.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value not in codes(report)
+
+
+def test_arabic_indic_percentage_is_not_ignored() -> None:
+    report = audit_output(
+        request="لا توجد بيانات موثوقة عن معدل التحويل.",
+        analysis="قد يصل معدل التحويل إلى ٨٠٪.",
+        critique="لا يوجد مصدر أو قياس يدعم هذا الرقم.",
+        answer="UNKNOWN: معدل التحويل غير مقاس. Decision: لا تعتمد التوقع. Assumptions: لا توجد بيانات تاريخية. Falsification test: قس التحويل الفعلي.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)
+
+
+def test_arabic_indic_customer_ratio_is_not_grounded_by_ascii_count() -> None:
+    report = audit_output(
+        request="لدينا 5 عملاء مهتمين بالتجربة.",
+        analysis="سيشتري ٢ من أصل ٥ عملاء.",
+        critique="لا يوجد دليل على الاستعداد للدفع.",
+        answer="UNKNOWN: نية الدفع غير معروفة. Decision: اختبر عرضاً مدفوعاً. Assumptions: السعر والقيمة لم يختبرا. Falsification test: راقب الدفع الفعلي.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)

@@ -396,7 +396,7 @@ class AthenaAgent:
                 "tags": ["reos", "athena", "analysis-review-synthesis-quality-gate"],
                 "metadata": {
                     "agent": "ATHENA",
-                    "agent_version": "0.2.0",
+                    "agent_version": "0.3.0",
                     "workflow": "analysis-review-synthesis-quality-gate",
                     "session_id": normalized_session_id,
                 },

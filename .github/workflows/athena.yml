@@ -7,6 +7,13 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      run_provider_smoke:
+        description: "Run ATHENA against the configured real analysis and review providers (provider charges may apply)"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -28,3 +35,31 @@ jobs:
           python -m pip install -e ".[lang,dev]"
       - name: Run unit and integration tests
         run: python -m pytest -q
+
+  provider-smoke:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_provider_smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ATHENA_ANALYSIS_MODEL: ${{ vars.ATHENA_ANALYSIS_MODEL }}
+      ATHENA_REVIEW_MODEL: ${{ vars.ATHENA_REVIEW_MODEL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install supported provider integrations
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[lang,openai,anthropic,google-genai,dev]"
+      - name: Inspect runtime and provider configuration
+        run: python -m reos.cli --doctor
+      - name: Execute real provider-backed ATHENA smoke test
+        run: python -m reos.cli --live-smoke

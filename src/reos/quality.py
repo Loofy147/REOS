@@ -112,7 +112,7 @@ _EXPERIMENT_FIELDS = {
     "intervention": re.compile(r"(?:\bintervention\b|\baction\b|\bالتدخل\b|\bالإجراء\b)", re.I),
     "observation": re.compile(r"(?:\bobservable\b|\bobservation\b|\boutcome\b|\bالملاحظة\b|\bالنتيجة\b)", re.I),
     "metric": re.compile(r"(?:\bmetric\b|\bmeasure\b|\bmeasurement\b|\bمقياس\b|\bالقياس\b)", re.I),
-    "decision_rule": re.compile(r"(?:\bdecision\\s+rule\b|\bdecision\\s+criterion\b|\bقاعدة\\s+القرار\b|\bمعيار\\s+القرار\b)", re.I),
+    "decision_rule": re.compile(r"(?:\bdecision\s+rule\b|\bdecision\s+criterion\b|\bقاعدة\s+القرار\b|\bمعيار\s+القرار\b)", re.I),
 }
 _PROPOSED_RE = re.compile(r"(?:PROPOSED[_ ]THRESHOLD|عتبة\s+مقترحة)", re.IGNORECASE)
 _RATIONALE_RE = re.compile(

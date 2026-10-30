@@ -70,7 +70,7 @@ The REOS Python kernel runs `reos.quality.audit_output` after synthesis and befo
 |---|---|
 | Numeric claim not found in user input or cited registered excerpt with matching value and unit | WARN |
 | Proposed numeric threshold explicitly labelled with a rationale | WARN, recorded as a provisional parameter |
-| ESTABLISHED claim without a registered reference | WARN |
+| ESTABLISHED claim without a registered reference | WARN |\n| Unsupported country/market-wide generalization stated as fact without a source | WARN |
 | Recommendation to collect raw or identifying business/customer data | BLOCK |
 | Conflicting decision statements | WARN |
 | Missing explicit decision | WARN |
@@ -124,7 +124,7 @@ The optional Python adapters currently cover OpenAI, Anthropic, and Google Gemin
 8. An unregistered citation token does not validate an ESTABLISHED claim.
 9. An explicit proposed threshold is distinguished from an empirical fact.
 10. A raw sensitive-data collection recommendation is blocked before turn recording.
-11. Decision contradictions, absent decisions, and absent falsification tests are surfaced.
+11. Decision contradictions, absent decisions, and absent falsification tests are surfaced.\n11a. Unsupported country/market generalizations stated as facts are surfaced; clearly labelled hypotheses remain hypotheses.
 12. Quality reports are exposed to callers and CLI users.
 13. Deterministic tests require no provider credentials.
 14. A real provider run is only claimed after the manually gated live smoke test passes.

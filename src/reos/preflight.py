@@ -105,7 +105,11 @@ def build_preflight_report(
             "both roles use the same provider; prefer different model families or providers to reduce correlated error",
         )
     else:
-        add("provider independence", "PASS", "analysis and review use different providers")
+        add(
+            "provider diversity",
+            "INFO",
+            "analysis and review use different providers; this may reduce shared provider-specific failures but does not establish statistical independence or correctness",
+        )
 
     db_path = Path(database_path).expanduser()
     if db_path.exists():

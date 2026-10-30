@@ -17,8 +17,14 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-lang = ["langgraph>=0.2.0", "langsmith>=0.3.0"]
-dev = ["pytest>=8.0.0"]
+lang = [
+  "langchain>=1.0,<2.0",
+  "langgraph>=1.0,<2.0",
+  "langsmith>=0.4,<1.0",
+  "langgraph-checkpoint-sqlite>=3.1.2,<4.0"
+]
+openai = ["langchain-openai>=1.0,<2.0"]
+dev = ["pytest>=8.0,<9.0"]
 
 [project.scripts]
 reos = "reos.cli:main"
@@ -28,3 +34,12 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

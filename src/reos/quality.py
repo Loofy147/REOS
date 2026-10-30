@@ -75,14 +75,23 @@ class QualityReport:
         return cls(status=QualityStatus(str(value.get("status", "WARN"))), findings=findings)
 
 
-_NUMBER_RE = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?(?![\w])")
-_METRIC_CONTEXT_RE = re.compile(
-    r"(?:%|percent(?:age)?|\b(?:days?|weeks?|months?|years?|hours?|minutes?|users?|customers?|"
-    r"clients?|interviews?|sales?|records?|units?|\$|€|دج|دينار|يوم|أيام|يوماً|يومًا|"
-    r"أسبوع|أسابيع|أسبوعين|شهر|أشهر|ساعة|ساعات|عميل|عملاء|مستخدم|مستخدمين|مقابلة|"
-    r"مقابلات|سجل|سجلات|مبيعات|من أصل|من خمسة|من 5)\b)",
+_UNIT_PATTERN = (
+    r"percent(?:age)?|%|٪|days?|weeks?|months?|years?|hours?|minutes?|"
+    r"users?|customers?|clients?|interviews?|sales?|records?|units?|"
+    r"\\$|€|دج|دينار|يوم|أيام|يوماً|يومًا|أسبوع|أسابيع|أسبوعين|"
+    r"شهر|أشهر|ساعة|ساعات|عميل|عملاء|مستخدم|مستخدمين|مقابلة|مقابلات|سجل|سجلات|مبيعات"
+)
+_RATIO_RE = re.compile(
+    rf"(?P<numerator>\\d+)\\s*(?:out\\s+of|of|من\\s+أصل|من)\\s*"
+    rf"(?P<denominator>\\d+)\\s*(?P<unit>{_UNIT_PATTERN})\\b",
     re.IGNORECASE,
 )
+_NUMBER_UNIT_RE = re.compile(
+    rf"(?P<value>\\d+(?:[.,]\\d+)?)\\s*[-–]?\\s*"
+    rf"(?:[A-Za-z]+\\s+){{0,2}}(?P<unit>{_UNIT_PATTERN})\\b",
+    re.IGNORECASE,
+)
+
 _SENTENCE_RE = re.compile(r"(?<=[.!?؟؛])\s+|\n+")
 _REFERENCE_RE = re.compile(r"\[([A-Za-z][A-Za-z0-9_-]{0,31})\]")
 _ESTABLISHED_RE = re.compile(r"\bESTABLISHED\s*[:：]", re.IGNORECASE)
@@ -133,14 +142,58 @@ def _sentences(text: str) -> Iterable[str]:
             yield sentence
 
 
-def _numeric_tokens(text: str) -> set[str]:
-    return {match.group(0).replace(",", ".") for match in _NUMBER_RE.finditer(text)}
+def _canonical_unit(unit: str) -> str:
+    lowered = unit.lower()
+    if lowered in {"%", "٪", "percent", "percentage"}:
+        return "percent"
+    if lowered in {"day", "days", "يوم", "أيام", "يوماً", "يومًا"}:
+        return "days"
+    if lowered in {"week", "weeks", "أسبوع", "أسابيع", "أسبوعين"}:
+        return "weeks"
+    if lowered in {"month", "months", "شهر", "أشهر"}:
+        return "months"
+    if lowered in {"year", "years"}:
+        return "years"
+    if lowered in {"hour", "hours", "ساعة", "ساعات"}:
+        return "hours"
+    if lowered in {"minute", "minutes"}:
+        return "minutes"
+    if lowered in {"customer", "customers", "client", "clients", "عميل", "عملاء"}:
+        return "customers"
+    if lowered in {"user", "users", "مستخدم", "مستخدمين"}:
+        return "users"
+    if lowered in {"interview", "interviews", "مقابلة", "مقابلات"}:
+        return "interviews"
+    if lowered in {"record", "records", "سجل", "سجلات"}:
+        return "records"
+    if lowered in {"دج", "دينار"}:
+        return "DZD"
+    if lowered in {"$", "€"}:
+        return lowered
+    return lowered
 
 
-def _has_metric(sentence: str) -> bool:
-    return bool(_METRIC_CONTEXT_RE.search(sentence)) or bool(
-        re.search(r"\d\s*(?:/|٪|%)\s*\d*", sentence)
-    )
+def _metric_tokens(text: str) -> set[str]:
+    """Extract numeric quantities with units; counts and percentages are distinct."""
+    claims: set[str] = set()
+    ratio_spans: list[tuple[int, int]] = []
+    for match in _RATIO_RE.finditer(text):
+        ratio_spans.append(match.span())
+        unit = _canonical_unit(match.group("unit"))
+        claims.add(
+            f"ratio:{match.group('numerator')}/{match.group('denominator')}:{unit}"
+        )
+
+    for match in _NUMBER_UNIT_RE.finditer(text):
+        if any(
+            match.start() < end and match.end() > start
+            for start, end in ratio_spans
+        ):
+            continue
+        value = match.group("value").replace(",", ".")
+        unit = _canonical_unit(match.group("unit"))
+        claims.add(f"{value}:{unit}")
+    return claims
 
 
 def _verified_references(
@@ -184,16 +237,16 @@ def audit_output(
     A PASS means no configured rule fired; it does not prove factual correctness.
     """
     findings: list[QualityFinding] = []
-    supplied_numbers = _numeric_tokens(request)
+    supplied_metrics = _metric_tokens(request)
     stages = (("analysis", analysis), ("review", critique), ("synthesis", answer))
 
     for stage_name, text in stages:
         sentences = list(_sentences(text))
         for index, sentence in enumerate(sentences):
-            numbers = _numeric_tokens(sentence)
-            if not numbers or not _has_metric(sentence):
+            metrics = _metric_tokens(sentence)
+            if not metrics:
                 continue
-            if numbers.issubset(supplied_numbers):
+            if metrics.issubset(supplied_metrics):
                 continue
             if _verified_references(sentence, evidence_references):
                 continue

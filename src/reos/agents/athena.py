@@ -194,10 +194,11 @@ def _evidence_context(references: list[dict[str, str]]) -> str:
     ]
     for reference in references:
         lines.append(
-            "- [{id}] {source} | observed: {observed_at}".format(
+            "- [{id}] {source} | observed: {observed_at} | locator: {locator}".format(
                 id=reference["reference_id"],
                 source=reference["source"],
                 observed_at=reference["observed_at"],
+                locator=reference["locator"],
             )
         )
     return "\n".join(lines)
@@ -280,6 +281,7 @@ class AthenaAgent:
                     reference_id=item["reference_id"],
                     source=item["source"],
                     observed_at=item["observed_at"],
+                    locator=item["locator"],
                 )
                 for item in state.get("evidence_references", [])
             )
@@ -342,6 +344,7 @@ class AthenaAgent:
                 "reference_id": item.reference_id,
                 "source": item.source,
                 "observed_at": item.observed_at,
+                "locator": item.locator,
             }
             for item in evidence_references
         ]

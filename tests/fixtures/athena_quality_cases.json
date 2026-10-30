@@ -76,7 +76,7 @@
       "request": "Assess the market.",
       "analysis": "",
       "critique": "",
-      "answer": "ESTABLISHED: The market is worth $10 million [E99]. Decision: defer. Assumptions: demand is unverified. Falsification test: measure paid demand.",
+      "answer": "ESTABLISHED: A 10% conversion rate is typical [E99]. Decision: defer. Assumptions: demand is unverified. Falsification test: measure paid demand.",
       "expected_status": "WARN",
       "expected_findings": [
         "UNSUPPORTED_NUMERIC_CLAIM",

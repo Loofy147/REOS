@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol, TypedDict
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -12,7 +12,7 @@ from langgraph.graph import END, START, StateGraph
 class ChatModel(Protocol):
     """Minimal interface required from a LangChain-compatible chat model."""
 
-    def invoke(self, messages: list[Any], config: dict[str, Any] | None = None) -> Any:
+    def invoke(self, messages: list[Any], config: RunnableConfig | None = None) -> Any:
         ...
 
 
@@ -103,17 +103,18 @@ def _required_content_text(message: Any, *, stage: str) -> str:
     return content
 
 
-def _history_messages(turns: list[dict[str, str]]) -> list[HumanMessage]:
-    """Expose only prior user requests and published answers to the same session."""
-    messages: list[HumanMessage] = []
+def _history_messages(turns: list[dict[str, str]]) -> list[Any]:
+    """Restore earlier turns with their original human/assistant message roles."""
+    messages: list[Any] = []
     for turn in turns[-8:]:
         request = turn.get("request", "").strip()
         response = turn.get("response", "").strip()
         if request and response:
-            messages.append(
-                HumanMessage(
-                    content=f"Prior session turn:\nUser request: {request}\nATHENA answer: {response}"
-                )
+            messages.extend(
+                [
+                    HumanMessage(content=request),
+                    AIMessage(content=response),
+                ]
             )
     return messages
 
@@ -208,7 +209,17 @@ class AthenaAgent:
         normalized_session_id = session_id.strip()
         result = self._graph.invoke(
             {"request": normalized_request},
-            config={"configurable": {"thread_id": normalized_session_id}},
+            config={
+                "configurable": {"thread_id": normalized_session_id},
+                "run_name": "ATHENA",
+                "tags": ["reos", "athena", "analysis-review-synthesis"],
+                "metadata": {
+                    "agent": "ATHENA",
+                    "agent_version": "0.1.0",
+                    "workflow": "analysis-review-synthesis",
+                    "session_id": normalized_session_id,
+                },
+            },
         )
         turns = result.get("turns", [])
         return AthenaResponse(

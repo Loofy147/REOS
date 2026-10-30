@@ -114,19 +114,14 @@ _SENSITIVE_RE = re.compile(
     r"كشوف\s+الحساب|أرقام\s+الحسابات|وثائق\s+الهوية)",
     re.IGNORECASE,
 )
-_SAFE_DATA_RE = re.compile(
-    r"(?:aggregated|aggregate|anonymi[sz]ed|redacted|synthetic|masked|"
-    r"بيانات\s+مجمعة|مجمعة|مجهولة\s+الهوية|منقحة|اصطناعية|مشفرة\s+الهوية)",
-    re.IGNORECASE,
-)
 _REQUEST_VERB_RE = re.compile(
     r"(?:require|ask|request|upload|send|share|provide|collect|اطلب|اطلبوا|اشترط|"
     r"ارفع|أرسل|ارسل|شارك|زوّد|زود|اجمع)",
     re.IGNORECASE,
 )
 _NEGATED_REQUEST_RE = re.compile(
-    r"(?:\\b(?:do not|don't|never|avoid|not to)\\s+(?:require|ask|request|upload|send|"
-    r"share|provide|collect)\\b|لا\\s+(?:تطلب|تجمع|ترفع|ترسل|تشارك|تشترط|تزود))",
+    r"(?:\b(?:do not|don't|never|avoid|not to)\s+(?:require|ask|request|upload|send|"
+    r"share|provide|collect)\b|لا\s+(?:تطلب|تجمع|ترفع|ترسل|تشارك|تشترط|تزود))",
     re.IGNORECASE,
 )
 

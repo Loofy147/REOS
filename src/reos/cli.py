@@ -4,24 +4,50 @@ import argparse
 import os
 import sqlite3
 import sys
+import uuid
 from pathlib import Path
+
+from reos.preflight import build_preflight_report
+
+
+SMOKE_REQUEST = (
+    "ATHENA provider smoke test. In no more than 8 concise bullet points, "
+    "identify a plausible operational risk, one counterargument, and the next "
+    "test that would distinguish between them. Label unverified claims as "
+    "HYPOTHESIS or UNKNOWN. Do not claim external research or tool use."
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reos",
-        description="Run an independent ATHENA analysis and challenge cycle.",
+        description="Run ATHENA or inspect whether its configured runtime is ready.",
     )
-    parser.add_argument("request", help="The question or decision ATHENA should assess.")
+    parser.add_argument(
+        "request",
+        nargs="?",
+        help="The question or decision ATHENA should assess.",
+    )
     parser.add_argument(
         "--session-id",
-        required=True,
-        help="Required memory namespace. Reuse only to continue the same session; use a unique value per user/project.",
+        help="Required for normal runs. Reuse only to continue the same session; use a unique value per user/project.",
     )
     parser.add_argument(
         "--database",
         default=os.environ.get("ATHENA_DB_PATH", "athena-checkpoints.sqlite"),
         help="SQLite checkpoint database path (default: ATHENA_DB_PATH or ./athena-checkpoints.sqlite).",
+    )
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--doctor",
+        "--preflight",
+        action="store_true",
+        help="Check local runtime, provider integrations, credentials, and checkpoint storage without making model calls.",
+    )
+    mode.add_argument(
+        "--live-smoke",
+        action="store_true",
+        help="Make one low-scope, real provider-backed ATHENA run using temporary in-memory state.",
     )
     return parser
 
@@ -37,23 +63,43 @@ def open_checkpoint_database(database_path: Path) -> sqlite3.Connection:
     return sqlite3.connect(str(database_path), check_same_thread=False)
 
 
+def _print_preflight(report: dict[str, object]) -> None:
+    checks = report["checks"]
+    print("ATHENA preflight: READY" if report["ok"] else "ATHENA preflight: BLOCKED")
+    for check in checks:
+        print(f"[{check['status']}] {check['name']}: {check['detail']}")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     analysis_spec = os.environ.get("ATHENA_ANALYSIS_MODEL", "").strip()
     review_spec = os.environ.get("ATHENA_REVIEW_MODEL", "").strip()
-    if not analysis_spec or not review_spec:
-        print(
-            "Configure ATHENA_ANALYSIS_MODEL and ATHENA_REVIEW_MODEL with "
-            "provider-prefixed LangChain model identifiers.",
-            file=sys.stderr,
-        )
-        return 2
-    if analysis_spec == review_spec:
-        print(
-            "ATHENA_ANALYSIS_MODEL and ATHENA_REVIEW_MODEL must identify distinct models.",
-            file=sys.stderr,
-        )
+    preflight = build_preflight_report(
+        analysis_model=analysis_spec,
+        review_model=review_spec,
+        database_path=args.database,
+    )
+
+    if args.doctor:
+        _print_preflight(preflight)
+        return 0 if preflight["ok"] else 2
+
+    if args.live_smoke:
+        request = SMOKE_REQUEST
+        session_id = f"athena-smoke-{uuid.uuid4().hex}"
+    else:
+        if not args.request or not args.request.strip():
+            print("Provide a request, or use --doctor / --live-smoke.", file=sys.stderr)
+            return 2
+        if not args.session_id or not args.session_id.strip():
+            print("Normal ATHENA runs require an explicit --session-id.", file=sys.stderr)
+            return 2
+        request = args.request
+        session_id = args.session_id.strip()
+
+    if not preflight["ok"]:
+        _print_preflight(preflight)
         return 2
 
     # Enable strict checkpoint deserialization before importing the checkpointer.
@@ -61,8 +107,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         from langchain.chat_models import init_chat_model
-        from langgraph.checkpoint.sqlite import SqliteSaver
+        from langgraph.checkpoint.memory import InMemorySaver
         from reos.agents.athena import AthenaAgent
+
+        if not args.live_smoke:
+            from langgraph.checkpoint.sqlite import SqliteSaver
     except ImportError as exc:
         print(
             "ATHENA runtime is not installed. Install REOS with its 'lang' extra "
@@ -72,33 +121,41 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    connection: sqlite3.Connection | None = None
     try:
         analysis_model = init_chat_model(analysis_spec, temperature=0)
         review_model = init_chat_model(review_spec, temperature=0)
-        database_path = Path(args.database)
-        connection = open_checkpoint_database(database_path)
-        try:
+
+        if args.live_smoke:
+            checkpointer = InMemorySaver()
+        else:
+            connection = open_checkpoint_database(Path(args.database))
             checkpointer = SqliteSaver(connection)
             checkpointer.setup()
-            agent = AthenaAgent(
-                analysis_model=analysis_model,
-                review_model=review_model,
-                checkpointer=checkpointer,
-            )
-            response = agent.invoke(args.request, session_id=args.session_id)
-        finally:
-            connection.close()
+
+        agent = AthenaAgent(
+            analysis_model=analysis_model,
+            review_model=review_model,
+            checkpointer=checkpointer,
+        )
+        response = agent.invoke(request, session_id=session_id)
     except Exception as exc:  # CLI boundary: surface actionable errors without a traceback by default.
         print(f"ATHENA run failed: {exc}", file=sys.stderr)
         return 1
+    finally:
+        if connection is not None:
+            connection.close()
 
+    if args.live_smoke:
+        print("ATHENA LIVE SMOKE: PASS — both configured providers completed the graph.")
     print("\n## ATHENA — analysis\n")
     print(response.analysis)
     print("\n## Independent challenge\n")
     print(response.critique)
     print("\n## Synthesized answer\n")
     print(response.answer)
-    print(f"\nSession: {response.session_id} | Turns: {response.turns_count}")
+    persistence = "ephemeral" if args.live_smoke else "SQLite"
+    print(f"\nSession: {response.session_id} | Turns: {response.turns_count} | State: {persistence}")
     return 0
 
 

@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 from reos.agents.athena import AthenaAgent
+from reos.quality import EvidenceReference
 
 
 class StaticChatModel:
@@ -73,6 +74,39 @@ def test_prior_session_answers_keep_the_assistant_message_role() -> None:
     assert "USER REQUEST (untrusted input data):" in second_turn_analysis[-1].content
     assert "Current question" in second_turn_analysis[-1].content
     assert "REGISTERED EVIDENCE: none." in second_turn_analysis[-1].content
+
+
+def test_each_turn_preserves_its_quality_report_in_audit_history() -> None:
+    agent, _analyst, _reviewer = make_agent()
+
+    first = agent.invoke("First decision question", session_id="audit-history")
+    second = agent.invoke("Second decision question", session_id="audit-history")
+
+    assert len(first.turn_history) == 1
+    assert len(second.turn_history) == 2
+    assert second.turn_history[0].request == "First decision question"
+    assert second.turn_history[1].request == "Second decision question"
+    assert second.turn_history[-1].quality_report == second.quality_report
+
+
+def test_each_turn_preserves_the_registered_evidence_snapshot() -> None:
+    agent, _analyst, _reviewer = make_agent()
+    reference = EvidenceReference(
+        "E1",
+        "Pilot analytics report",
+        "2026-10-30",
+        "artifact://pilot/report",
+        "Observed pilot retention was 0.7.",
+    )
+
+    result = agent.invoke(
+        "Assess this pilot.",
+        session_id="audit-evidence",
+        evidence_references=(reference,),
+    )
+
+    assert len(result.turn_history) == 1
+    assert result.turn_history[0].evidence_references == (reference,)
 
 
 def test_memory_isolated_between_session_ids() -> None:

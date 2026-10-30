@@ -24,6 +24,7 @@ class FindingCode(str, Enum):
     MISSING_EPISTEMIC_CLASSIFICATION = "MISSING_EPISTEMIC_CLASSIFICATION"
     MISSING_ASSUMPTION_REGISTER = "MISSING_ASSUMPTION_REGISTER"
     INCOMPLETE_EXPERIMENT_CARD = "INCOMPLETE_EXPERIMENT_CARD"
+    UNSOURCED_CONTEXTUAL_GENERALIZATION = "UNSOURCED_CONTEXTUAL_GENERALIZATION"
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +100,19 @@ _NUMBER_UNIT_RE = re.compile(
 _SENTENCE_RE = re.compile(r"(?<=[.!?؟؛])\s+|\n+")
 _REFERENCE_RE = re.compile(r"\[([A-Za-z][A-Za-z0-9_-]{0,31})\]")
 _ESTABLISHED_RE = re.compile(r"\bESTABLISHED\s*[:：]", re.IGNORECASE)
+_USER_REPORTED_RE = re.compile(r"\b(?:USER_REPORTED|HYPOTHESIS|UNKNOWN)\s*[:：]", re.IGNORECASE)
+_CONTEXT_MARKET_RE = re.compile(
+    r"(?:في\\s+الجزائر|السوق\\s+الجزائري|السوق\\s+المحلي|الاقتصاد\\s+الجزائري|"
+    r"المستهلك\\s+الجزائري|العملاء\\s+الجزائريون|الجزائريون|Algeria|"
+    r"Algerian\\s+(?:market|consumers|customers))",
+    re.IGNORECASE,
+)
+_GENERALIZATION_RE = re.compile(
+    r"(?:يعتمد(?:\\s+بشكل\\s+كبير)?\\s+على|يغلب\\s+عليه|غالباً|غالبًا|عادةً|عادة|"
+    r"معظم|الأغلبية|منتشر|شائع|cash[- ]based|mostly|predominantly|typically|"
+    r"generally|relies\\s+heavily\\s+on|most\\s+customers|widespread)",
+    re.IGNORECASE,
+)
 _EPISTEMIC_LABEL_RE = re.compile(
     r"\b(?:ESTABLISHED|USER_REPORTED|INFERENCE|HYPOTHESIS|UNKNOWN)\b",
     re.IGNORECASE,
@@ -325,6 +339,21 @@ def audit_output(
             )
 
     for sentence in _sentences(answer):
+        if (
+            _CONTEXT_MARKET_RE.search(sentence)
+            and _GENERALIZATION_RE.search(sentence)
+            and not _USER_REPORTED_RE.search(sentence)
+            and not _verified_references(sentence, evidence_references)
+        ):
+            findings.append(
+                QualityFinding(
+                    FindingCode.UNSOURCED_CONTEXTUAL_GENERALIZATION,
+                    QualityStatus.WARN,
+                    "A contextual or market-wide generalization is stated without a registered source. Downgrade it to HYPOTHESIS or UNKNOWN, or provide the inspected supporting excerpt.",
+                    sentence[:240],
+                )
+            )
+
         if _ESTABLISHED_RE.search(sentence) and not _verified_references(
             sentence, evidence_references
         ):

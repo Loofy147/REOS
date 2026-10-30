@@ -44,9 +44,12 @@ reos "Assess this product launch plan and identify the next validation test." \
   --database ./data/athena.sqlite
 ```
 
-Reuse the same `--session-id` to continue that session. Use a new id for a
-separate project, user, or trust boundary. The SQLite file is persistent,
-sensitive application data; protect it accordingly.
+Reuse the same `--session-id` only to continue that session. The argument is
+required so separate CLI runs cannot silently share a generic default thread.
+Choose a fresh id for each user, project, or trust boundary. Do not use a
+session id as an authentication mechanism. The SQLite file is persistent, sensitive application data. On POSIX the CLI
+creates/restricts it to owner-only permissions (0600); keep its parent directory,
+backups, and host access similarly protected.
 
 ## 5. Enable LangSmith tracing (optional)
 

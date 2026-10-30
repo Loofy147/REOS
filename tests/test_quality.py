@@ -75,7 +75,7 @@ def test_established_claim_with_registered_evidence_reference_is_not_flagged() -
         critique="The evidence is limited.",
         answer="ESTABLISHED: The cited regulation applies [E1].",
         evidence_references=(
-            EvidenceReference("E1", "Official source", "2026-10-30", "https://example.org/source"),
+            EvidenceReference("E1", "Official source", "2026-10-30", "https://example.org/source", "The cited regulation applies."),
         ),
     )
 
@@ -89,7 +89,7 @@ def test_evidence_reference_requires_a_locator() -> None:
         critique="The evidence is limited.",
         answer="ESTABLISHED: The cited regulation applies [E1].",
         evidence_references=(
-            EvidenceReference("E1", "Official source", "2026-10-30", ""),
+            EvidenceReference("E1", "Official source", "2026-10-30", "", "The cited regulation applies."),
         ),
     )
 
@@ -204,7 +204,7 @@ def test_evidence_reference_with_invalid_date_is_not_registered() -> None:
         critique="The evidence is limited.",
         answer="ESTABLISHED: The cited regulation applies [E1].",
         evidence_references=(
-            EvidenceReference("E1", "Official source", "yesterday", "https://example.org/source"),
+            EvidenceReference("E1", "Official source", "yesterday", "https://example.org/source", "The cited regulation applies."),
         ),
     )
 
@@ -231,3 +231,69 @@ def test_customer_ratio_is_not_grounded_by_customer_count_alone() -> None:
     )
 
     assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)
+
+
+def test_registered_excerpt_supports_matching_numeric_claim() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The conversion rate is 5% [E1].",
+        critique="The sample context is limited.",
+        answer="Decision: run a limited pilot. Falsification test: compare observed paid conversion with the break-even rate.",
+        evidence_references=(
+            EvidenceReference(
+                "E1",
+                "Pilot analytics export",
+                "2026-10-30",
+                "artifact://pilot/metrics",
+                "Observed conversion rate was 5% for this pilot cohort.",
+            ),
+        ),
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value not in codes(report)
+
+
+def test_citation_with_nonmatching_excerpt_does_not_support_numeric_claim() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The conversion rate is 5% [E1].",
+        critique="The sample context is limited.",
+        answer="Decision: run a limited pilot. Falsification test: measure paid conversion.",
+        evidence_references=(
+            EvidenceReference(
+                "E1",
+                "Pilot roster",
+                "2026-10-30",
+                "artifact://pilot/roster",
+                "The pilot included 5 customers.",
+            ),
+        ),
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)
+
+
+def test_duplicate_evidence_ids_are_rejected() -> None:
+    from langgraph.checkpoint.memory import InMemorySaver
+    from reos.agents.athena import AthenaAgent
+
+    class NoCallModel:
+        def invoke(self, messages, config=None):
+            raise AssertionError("Model must not be called when evidence registration is invalid")
+
+    agent = AthenaAgent(
+        analysis_model=NoCallModel(),
+        review_model=NoCallModel(),
+        checkpointer=InMemorySaver(),
+    )
+    reference = EvidenceReference(
+        "E1", "Source", "2026-10-30", "artifact://one", "Evidence excerpt."
+    )
+
+    import pytest
+    with pytest.raises(ValueError, match="unique"):
+        agent.invoke(
+            "Assess this claim.",
+            session_id="duplicate-evidence-id",
+            evidence_references=(reference, reference),
+        )

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
@@ -134,7 +135,7 @@ class AthenaAgent:
         analysis_model = self._analysis_model
         review_model = self._review_model
 
-        def analyze(state: AthenaState, config: dict[str, Any]) -> dict[str, str]:
+        def analyze(state: AthenaState, config: RunnableConfig) -> dict[str, str]:
             turns = state.get("turns", [])
             messages = [
                 SystemMessage(content=ANALYSIS_SYSTEM_PROMPT),
@@ -157,7 +158,7 @@ class AthenaAgent:
             result = review_model.invoke(messages, config=config)
             return {"critique": _content_text(result)}
 
-        def synthesize(state: AthenaState, config: dict[str, Any]) -> dict[str, Any]:
+        def synthesize(state: AthenaState, config: RunnableConfig) -> dict[str, Any]:
             messages = [
                 SystemMessage(content=SYNTHESIS_SYSTEM_PROMPT),
                 HumanMessage(

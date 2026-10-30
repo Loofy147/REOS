@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Protocol, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -360,8 +361,6 @@ class AthenaAgent:
                 raise ValueError(
                     f"Evidence reference {reference_id!r} excerpt exceeds 8,000 characters."
                 )
-            from datetime import date
-
             try:
                 date.fromisoformat(item.observed_at)
             except ValueError as exc:

@@ -102,15 +102,15 @@ _REFERENCE_RE = re.compile(r"\[([A-Za-z][A-Za-z0-9_-]{0,31})\]")
 _ESTABLISHED_RE = re.compile(r"\bESTABLISHED\s*[:：]", re.IGNORECASE)
 _USER_REPORTED_RE = re.compile(r"\b(?:USER_REPORTED|HYPOTHESIS|UNKNOWN)\s*[:：]", re.IGNORECASE)
 _CONTEXT_MARKET_RE = re.compile(
-    r"(?:في\\s+الجزائر|السوق\\s+الجزائري|السوق\\s+المحلي|الاقتصاد\\s+الجزائري|"
-    r"المستهلك\\s+الجزائري|العملاء\\s+الجزائريون|الجزائريون|Algeria|"
-    r"Algerian\\s+(?:market|consumers|customers))",
+    r"(?:في\s+الجزائر|السوق\s+الجزائري|السوق\s+المحلي|الاقتصاد\s+الجزائري|"
+    r"المستهلك\s+الجزائري|العملاء\s+الجزائريون|الجزائريون|Algeria|"
+    r"Algerian\s+(?:market|consumers|customers))",
     re.IGNORECASE,
 )
 _GENERALIZATION_RE = re.compile(
-    r"(?:يعتمد(?:\\s+بشكل\\s+كبير)?\\s+على|يغلب\\s+عليه|غالباً|غالبًا|عادةً|عادة|"
+    r"(?:يعتمد(?:\s+بشكل\s+كبير)?\s+على|يغلب\s+عليه|غالباً|غالبًا|عادةً|عادة|"
     r"معظم|الأغلبية|منتشر|شائع|cash[- ]based|mostly|predominantly|typically|"
-    r"generally|relies\\s+heavily\\s+on|most\\s+customers|widespread)",
+    r"generally|relies\s+heavily\s+on|most\s+customers|widespread)",
     re.IGNORECASE,
 )
 _EPISTEMIC_LABEL_RE = re.compile(

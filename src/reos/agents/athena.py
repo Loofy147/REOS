@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 import json
+import re
 from typing import Any, Protocol, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -29,6 +30,14 @@ class ChatModel(Protocol):
 
 class AthenaOutputError(RuntimeError):
     """Raised when an agent stage or deterministic output gate rejects a turn."""
+
+
+MAX_EVIDENCE_REFERENCES = 20
+MAX_EVIDENCE_SOURCE_CHARS = 500
+MAX_EVIDENCE_LOCATOR_CHARS = 2048
+MAX_EVIDENCE_EXCERPT_CHARS = 8000
+MAX_EVIDENCE_TOTAL_CHARS = 40000
+EVIDENCE_ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,31}")
 
 
 class AthenaState(TypedDict, total=False):
@@ -430,24 +439,56 @@ class AthenaAgent:
 
         normalized_request = request.strip()
         normalized_session_id = session_id.strip()
+        if len(evidence_references) > MAX_EVIDENCE_REFERENCES:
+            raise ValueError(
+                f"At most {MAX_EVIDENCE_REFERENCES} evidence references are allowed per turn."
+            )
         seen_reference_ids: set[str] = set()
         evidence_state: list[dict[str, str]] = []
+        total_excerpt_chars = 0
         for item in evidence_references:
-            reference_id = item.reference_id.strip()
-            if not reference_id or reference_id in seen_reference_ids:
-                raise ValueError("Evidence reference IDs must be non-empty and unique.")
-            seen_reference_ids.add(reference_id)
-            if not (
-                item.source.strip()
-                and item.locator.strip()
-                and item.excerpt.strip()
+            if not all(
+                isinstance(value, str)
+                for value in (
+                    item.reference_id,
+                    item.source,
+                    item.observed_at,
+                    item.locator,
+                    item.excerpt,
+                )
             ):
+                raise ValueError("Evidence reference fields must all be strings.")
+            reference_id = item.reference_id.strip()
+            if not EVIDENCE_ID_PATTERN.fullmatch(reference_id):
+                raise ValueError(
+                    "Evidence reference IDs must start with a letter and contain only letters, numbers, '_' or '-'."
+                )
+            if reference_id in seen_reference_ids:
+                raise ValueError("Evidence reference IDs must be unique.")
+            seen_reference_ids.add(reference_id)
+            source = item.source.strip()
+            locator = item.locator.strip()
+            excerpt = item.excerpt.strip()
+            if not (source and locator and excerpt):
                 raise ValueError(
                     f"Evidence reference {reference_id!r} requires source, locator, and excerpt."
                 )
-            if len(item.excerpt) > 8000:
+            if len(source) > MAX_EVIDENCE_SOURCE_CHARS:
                 raise ValueError(
-                    f"Evidence reference {reference_id!r} excerpt exceeds 8,000 characters."
+                    f"Evidence reference {reference_id!r} source exceeds {MAX_EVIDENCE_SOURCE_CHARS} characters."
+                )
+            if len(locator) > MAX_EVIDENCE_LOCATOR_CHARS:
+                raise ValueError(
+                    f"Evidence reference {reference_id!r} locator exceeds {MAX_EVIDENCE_LOCATOR_CHARS} characters."
+                )
+            if len(excerpt) > MAX_EVIDENCE_EXCERPT_CHARS:
+                raise ValueError(
+                    f"Evidence reference {reference_id!r} excerpt exceeds {MAX_EVIDENCE_EXCERPT_CHARS} characters."
+                )
+            total_excerpt_chars += len(excerpt)
+            if total_excerpt_chars > MAX_EVIDENCE_TOTAL_CHARS:
+                raise ValueError(
+                    f"Evidence excerpts exceed the {MAX_EVIDENCE_TOTAL_CHARS}-character per-turn limit."
                 )
             try:
                 date.fromisoformat(item.observed_at)
@@ -458,10 +499,10 @@ class AthenaAgent:
             evidence_state.append(
                 {
                     "reference_id": reference_id,
-                    "source": item.source.strip(),
+                    "source": source,
                     "observed_at": item.observed_at,
-                    "locator": item.locator.strip(),
-                    "excerpt": item.excerpt.strip(),
+                    "locator": locator,
+                    "excerpt": excerpt,
                 }
             )
         result = self._graph.invoke(

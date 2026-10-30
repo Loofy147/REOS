@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from reos.cli import build_parser
+from reos.cli import build_parser, open_checkpoint_database
 
 
 def test_cli_requires_explicit_session_id() -> None:
@@ -21,3 +21,19 @@ def test_cli_accepts_explicit_session_and_database() -> None:
 
     assert args.session_id == "launch-01"
     assert args.database == "data/run.sqlite"
+
+
+
+def test_checkpoint_database_is_created_with_private_permissions(tmp_path) -> None:
+    import os
+    import stat
+
+    database = tmp_path / "private" / "agent.sqlite"
+    connection = open_checkpoint_database(database)
+    try:
+        assert database.exists()
+        if os.name == "posix":
+            assert stat.S_IMODE(database.stat().st_mode) == 0o600
+            assert stat.S_IMODE(database.parent.stat().st_mode) == 0o700
+    finally:
+        connection.close()

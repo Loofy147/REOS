@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 from reos.agents.athena import AthenaAgent
@@ -54,6 +54,23 @@ def test_athena_runs_analysis_independent_review_and_synthesis() -> None:
     assert "independent" in message_text(analyst.calls[0]).lower()
     assert "challenge" in message_text(reviewer.calls[0]).lower()
     assert "A skeptical counter-analysis." in message_text(analyst.calls[1])
+
+
+def test_prior_session_answers_keep_the_assistant_message_role() -> None:
+    agent, analyst, _reviewer = make_agent()
+
+    agent.invoke("Previous question", session_id="history-role")
+    agent.invoke("Current question", session_id="history-role")
+
+    second_turn_analysis = analyst.calls[2]
+    history_messages = second_turn_analysis[1:-1]
+
+    assert len(history_messages) == 2
+    assert isinstance(history_messages[0], HumanMessage)
+    assert "Previous question" in history_messages[0].content
+    assert isinstance(history_messages[1], AIMessage)
+    assert history_messages[1].content == "A structured analysis."
+    assert second_turn_analysis[-1].content == "Current question"
 
 
 def test_memory_isolated_between_session_ids() -> None:

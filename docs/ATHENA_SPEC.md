@@ -1,141 +1,144 @@
-# ATHENA agent contract — v0.2
+# ATHENA agent contract — v0.3
 
-**Status:** Provider-ready execution path implemented; real provider behavior must still pass the live smoke gate.  
+**Status:** Deterministic output gates implemented in the REOS Python runtime; the real-provider quality corpus and live provider behavior remain open gates.  
 **Owner:** REOS  
-**Identity:** ATHENA — independent strategic reasoning agent
+**Identity:** ATHENA — versioned strategic reasoning agent
 
-## Purpose
+## Purpose and operating model
 
-ATHENA is a separately configured agent for strategic analysis, skeptical
-review, and calibrated synthesis. It is intended to complement other agents,
-not mirror their conclusions or inherit their private state.
+ATHENA analyzes decisions, challenges its own provisional analysis, synthesizes a recommendation, and runs deterministic checks before a turn is recorded as complete.
 
-## Identity and boundaries
-
-- ATHENA's identity is a versioned software-agent specification and runtime,
-  not a claim of sentience, consciousness, legal personhood, or biological identity.
-- Model providers, model identifiers, prompt versions, session memory, and
-  permissions are explicit configuration/runtime concerns.
-- ATHENA does not receive ATLAS conversation history or private memory by
-  default. A caller may pass selected, approved context as part of a request.
-- Each session uses a distinct LangGraph `thread_id`. Do not reuse session ids
-  across users or trust boundaries.
-- ATHENA has no tools with side effects in this version.
+ATHENA is a software agent specification and runtime. This contract makes no claim of sentience, consciousness, legal personhood, or biological identity.
 
 ## Execution graph
 
 ```text
-User request
-    |
-    v
-ANALYSIS (analysis model)
-    |
-    v
-INDEPENDENT CHALLENGE (review model)
-    |
-    v
-SYNTHESIS (analysis model)
-    |
-    v
-Structured response + session checkpoint
+User request + explicitly registered evidence
+                 |
+                 v
+       ANALYSIS (analysis model)
+                 |
+                 v
+       ADVERSARIAL REVIEW (review model)
+                 |
+                 v
+       SYNTHESIS (analysis model)
+                 |
+                 v
+       DETERMINISTIC QUALITY GATE
+                 |
+          +------+------+
+          |             |
+        PASS/WARN      BLOCK
+          |             |
+          v             v
+   Record completed   Do not record
+        turn          completed turn
 ```
 
-The reviewer receives the request and analysis, but is prompted to find
-counterexamples, unsupported claims, missing evidence, risks, and falsifying
-tests. Synthesis must preserve meaningful disagreement and uncertainty.
+The reviewer must attack claims, assumptions, numerical provenance, decision consistency, experiment design, and privacy risks. Synthesis must preserve surviving disagreement and correct or downgrade unsupported claims.
 
-Analysis and review require different model instances and distinct model
-identifiers. For stronger independence, configure different model families or
-providers. Different providers can still share training data, incentives, or
-failure modes; provider diversity is not proof of correctness.
+## Epistemic and evidence contract
 
-## Evidence discipline
+| Label | Meaning | Minimum requirement |
+|---|---|---|
+| ESTABLISHED | Supported by evidence available in this run | Cite an exact registered evidence ID such as [E1] |
+| USER_REPORTED | Supplied by the user, not independently verified | Identify it as user supplied |
+| INFERENCE | Reasoned from identified premises | Show the material premises and inference |
+| HYPOTHESIS | Plausible but unverified | State what observation could test it |
+| UNKNOWN | Required information is unavailable | Do not fill the gap with invented specifics |
 
-ATHENA should distinguish:
+Only evidence references passed to `AthenaAgent.invoke(..., evidence_references=...)` are considered registered. Each reference must include an ID, source description, and observation date. A citation-looking token in generated text is not proof that a source exists. The current CLI does not yet provide a web-research ingestion workflow; without registered references, factual external claims must not be promoted to ESTABLISHED.
 
-| Label | Meaning |
+Do not invent citations, laws, market facts, provider activity, measurements, experiments, or verification. Country-level, cultural, payment, and legal generalizations require actual evidence.
+
+## Quantitative provenance contract
+
+Every material numeric claim must be:
+1. supplied by the user's request and labelled USER_REPORTED;
+2. supported by a registered evidence reference;
+3. transparently calculated with formula and inputs; or
+4. explicitly identified as a `PROPOSED_THRESHOLD`, with a rationale, decision consequence, and plan to pre-register and review it.
+
+A proposed threshold is an experiment parameter, not a market statistic, forecast, benchmark, empirical success rate, or validated probability. Never invent percentages, sample sizes, savings, conversion rates, costs, timelines, or pass/fail counts. When the data cannot support a number, preserve UNKNOWN and define how to measure it.
+
+## Deterministic quality gate
+
+The REOS Python kernel runs `reos.quality.audit_output` after synthesis and before writing the completed turn to checkpoint memory.
+
+| Check | Result |
 |---|---|
-| ESTABLISHED | Directly supported by reliable evidence available in the run |
-| USER_REPORTED | Supplied by the user, not independently checked |
-| INFERENCE | Reasoned from identified premises |
-| HYPOTHESIS | Plausible and currently unverified |
-| UNKNOWN | Required information is unavailable |
+| Numeric claim not found in user input or registered evidence | WARN |
+| Proposed numeric threshold explicitly labelled with a rationale | WARN, recorded as a provisional parameter |
+| ESTABLISHED claim without a registered reference | WARN |
+| Recommendation to collect raw or identifying business/customer data | BLOCK |
+| Conflicting decision statements | WARN |
+| Missing explicit decision | WARN |
+| Missing falsification/discriminating test | WARN |
 
-Do not fabricate citations, data, tool execution, experiments, or verification.
-Provide concise rationale and an auditable conclusion, not private
-chain-of-thought.
+- A BLOCK raises `AthenaOutputError`; the turn is not appended to completed session history.
+- WARN findings remain visible in `AthenaResponse.quality_report` and the CLI.
+- PASS means only that no configured rule fired. It does **not** prove factual correctness, completeness, fairness, or model independence.
+- The numeric scanner is rule-based and conservative. It does not yet understand every spelled-out number, unit conversion, implied quantity, table layout, or semantic paraphrase. Human review and a fixed evaluation corpus remain necessary.
+- The contradiction detector is a lexical heuristic, not a general natural-language entailment proof.
+- The sensitive-data detector is a targeted guard, not a complete DLP system. Minimize data regardless of whether a rule fires.
 
-## Memory contract
+These limitations are intentional and must be visible in evaluations. Do not describe the gate as a truth verifier.
 
-- Memory is scoped by `session_id` / LangGraph `thread_id`.
-- The CLI requires an explicit `--session-id` for persistent runs; it has no
-  shared default thread.
-- Reuse an id only to continue the same logical session. Use a different id for
-  each user, project, or trust boundary. A session id is a namespace, not an
-  authentication or authorization mechanism.
-- Earlier user requests are replayed as `HumanMessage` values and published
-  ATHENA answers are replayed as `AIMessage` values. Role fidelity is tested.
-- Only the prior user requests and ATHENA's published answers from that same
-  thread are included in later analysis context.
-- The in-memory checkpointer is used for embedded use, tests, and temporary
-  provider smoke runs.
-- The CLI uses SQLite checkpoints for persistence between process runs.
-- On POSIX, the CLI creates/restricts the checkpoint database file to owner-only
-  permissions (`0600`) and creates missing checkpoint directories with owner-only
-  permissions (`0700`). Operators remain responsible for existing parent
-  directories, backups, retention, and host access. Do not store secrets in prompts.
+## Privacy and data minimization
 
-## Provider support and diagnostics
+ATHENA must not ask for raw customer, supplier, financial, identity, or other sensitive records as a proxy for commitment or product demand. Prefer aggregated, anonymized, redacted, synthetic, or minimum-necessary evidence. Obtain an appropriate lawful basis and explicit consent where required. Never collect data merely because it appears to be a strong behavioral signal.
 
-The initial provider adapters cover OpenAI, Anthropic, and Google Gemini using
-the corresponding LangChain integration packages. Provider packages are
-optional dependencies so the REOS core remains provider-neutral.
+## Model independence
 
-- `reos --doctor` checks required runtime packages, model identifiers,
-  recognized provider integration packages, expected credential variable
-  presence, and checkpoint storage access. It does not make network calls and
-  does not validate the key itself, model entitlement, quota, or connectivity.
-- `reos --live-smoke` makes a bounded real model run through all three stages
-  using an in-memory checkpointer and a temporary session. Normal provider
-  charges may apply.
-- Normal task execution uses an explicit `--session-id` and durable SQLite state.
+Analysis and review must use distinct model instances. Configure distinct model families or providers to reduce correlated failures where practical. Distinct providers are not statistically independent and do not prove correctness. The AppDeploy-hosted runtime currently uses multiple prompts against the same hosted model service and is not independent model-family verification.
 
-Credential values must never be committed or printed. The GitHub Actions
-provider smoke job is manually gated and consumes repository variables for
-model identifiers and repository secrets for provider credentials. It is not
-triggered by pull-request events.
+## Memory, identity, and permissions
 
-## Observability
+- Memory is scoped by LangGraph `thread_id`; each user/project/trust boundary requires an appropriate unique session ID.
+- A session ID is a namespace, not an authentication or authorization mechanism.
+- Previous user requests are replayed as `HumanMessage`; published ATHENA answers are replayed as `AIMessage`.
+- Only the same thread's selected request/answer history is used for continuity.
+- No shell, repository write, email, finance, cloud, or other side-effect tools are exposed by this contract.
+- No autonomous merge, deployment, irreversible action, or self-modification is permitted.
 
-LangSmith tracing is opt-in through environment variables:
+## Provider setup and diagnostics
 
-- `LANGSMITH_TRACING=true`
-- `LANGSMITH_API_KEY`
-- `LANGSMITH_PROJECT=athena-development`
+The optional Python adapters currently cover OpenAI, Anthropic, and Google Gemini.
 
-Graph runs attach `agent`, `agent_version`, `workflow`, and `session_id`
-metadata. Do not enable tracing for sensitive inputs unless the project's
-privacy, access, and retention settings are appropriate. Trace payloads can
-contain prompts and generated outputs.
+- `reos --doctor` checks local runtime, configured model identifiers, provider adapter availability, credential-variable presence, and checkpoint storage. It does not validate credentials, quota, entitlement, model availability, or network connectivity.
+- `reos --live-smoke` performs a bounded real provider run through the graph. Provider charges may apply.
+- Normal runs require an explicit `--session-id` and use SQLite checkpoint state.
+- Credential values must never be committed or printed.
+- LangSmith tracing is opt-in. Traces can contain prompts and model outputs; enable it only with suitable access and retention controls.
 
 ## Acceptance gates
 
-1. Analysis, review, and synthesis execute in the specified order.
-2. Analysis and review use different model instances and distinct model identifiers.
-3. A skeptical review is actually invoked and included in synthesis.
-4. Prior user/assistant history retains the correct message roles.
-5. Separate thread ids do not expose each other's history.
-6. Blank requests and blank thread ids are rejected.
-7. Unit tests are deterministic and do not require provider credentials.
-8. Failed/empty stages cannot be reported as completed turns.
-9. CLI session ids are explicit and persistent checkpoint files are owner-only on POSIX.
-10. Preflight detects missing runtime dependencies, known provider adapters, and credential variables without exposing secret values.
-11. A real provider run is only claimed after the manually gated live smoke test passes on two configured provider/model identifiers.
-12. Traces and outputs are only used with appropriate privacy and retention controls.
+1. Analysis, adversarial review, synthesis, deterministic quality gate, and turn recording execute in that order.
+2. Analysis and review use distinct model instances.
+3. Reviewer objections are supplied to synthesis.
+4. Prior user/assistant messages retain correct roles and thread isolation.
+5. Blank requests and session IDs are rejected.
+6. Empty model-stage output fails the run and does not record a completed turn.
+7. Numeric claims not traceable to request/evidence are surfaced.
+8. An unregistered citation token does not validate an ESTABLISHED claim.
+9. An explicit proposed threshold is distinguished from an empirical fact.
+10. A raw sensitive-data collection recommendation is blocked before turn recording.
+11. Decision contradictions, absent decisions, and absent falsification tests are surfaced.
+12. Quality reports are exposed to callers and CLI users.
+13. Deterministic tests require no provider credentials.
+14. A real provider run is only claimed after the manually gated live smoke test passes.
+15. A fixed adversarial evaluation corpus demonstrates that quality improves without unacceptable false-block rates before production-grade claims are made.
 
-## Non-goals for this version
+## Known gap / next validation frontier
 
-- Autonomous access to repositories, email, terminals, cloud resources, or money.
-- Autonomous deployment, code merging, or irreversible external actions.
-- Automatic self-modification or self-improvement in production.
-- A family of specialist agents before ATHENA passes its own provider and output-quality gates.
+The current quality gate is a deterministic first layer. It needs:
+- evaluation of false positives/false negatives on Arabic, English, and mixed-language answers;
+- stronger extraction of spelled-out Arabic/English numerals, ratios, currency, and derived quantities;
+- structured evidence objects linked to retrievable source passages and dates;
+- semantic contradiction and assumption-dependency checks;
+- a privacy threat model and broader sensitive-data testing;
+- fixed benchmark prompts and blinded scoring across different providers/models;
+- runtime parity work for the AppDeploy-hosted companion.
+
+Do not expand the agent family or claim decision-grade reliability until these gates have evidence.

@@ -194,11 +194,12 @@ def _evidence_context(references: list[dict[str, str]]) -> str:
     ]
     for reference in references:
         lines.append(
-            "- [{id}] {source} | observed: {observed_at} | locator: {locator}".format(
+            "- [{id}] {source} | observed: {observed_at} | locator: {locator} | excerpt: {excerpt}".format(
                 id=reference["reference_id"],
                 source=reference["source"],
                 observed_at=reference["observed_at"],
                 locator=reference["locator"],
+                excerpt=reference["excerpt"],
             )
         )
     return "\n".join(lines)
@@ -282,6 +283,7 @@ class AthenaAgent:
                     source=item["source"],
                     observed_at=item["observed_at"],
                     locator=item["locator"],
+                    excerpt=item["excerpt"],
                 )
                 for item in state.get("evidence_references", [])
             )
@@ -339,15 +341,42 @@ class AthenaAgent:
 
         normalized_request = request.strip()
         normalized_session_id = session_id.strip()
-        evidence_state = [
-            {
-                "reference_id": item.reference_id,
-                "source": item.source,
-                "observed_at": item.observed_at,
-                "locator": item.locator,
-            }
-            for item in evidence_references
-        ]
+        seen_reference_ids: set[str] = set()
+        evidence_state: list[dict[str, str]] = []
+        for item in evidence_references:
+            reference_id = item.reference_id.strip()
+            if not reference_id or reference_id in seen_reference_ids:
+                raise ValueError("Evidence reference IDs must be non-empty and unique.")
+            seen_reference_ids.add(reference_id)
+            if not (
+                item.source.strip()
+                and item.locator.strip()
+                and item.excerpt.strip()
+            ):
+                raise ValueError(
+                    f"Evidence reference {reference_id!r} requires source, locator, and excerpt."
+                )
+            if len(item.excerpt) > 8000:
+                raise ValueError(
+                    f"Evidence reference {reference_id!r} excerpt exceeds 8,000 characters."
+                )
+            from datetime import date
+
+            try:
+                date.fromisoformat(item.observed_at)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Evidence reference {reference_id!r} requires an ISO observation date."
+                ) from exc
+            evidence_state.append(
+                {
+                    "reference_id": reference_id,
+                    "source": item.source.strip(),
+                    "observed_at": item.observed_at,
+                    "locator": item.locator.strip(),
+                    "excerpt": item.excerpt.strip(),
+                }
+            )
         result = self._graph.invoke(
             {
                 "request": normalized_request,

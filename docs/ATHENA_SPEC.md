@@ -64,7 +64,7 @@ A proposed threshold is an experiment parameter, not a market statistic, forecas
 
 ## Decision and experiment contract\n\nThe synthesis must state a decision, an explicit assumption register, and an experiment card with a testable hypothesis, intervention, observable outcome, measurement metric, and decision rule. Unsupported numeric cutoffs must be labelled `PROPOSED_THRESHOLD`; when a field cannot be grounded, mark it `UNKNOWN` and specify what information is missing. This prevents a vague instruction such as “test demand” from being presented as a fully specified experiment.\n\n## Deterministic quality gate
 
-The REOS Python kernel runs `reos.quality.audit_output` after synthesis and before writing the completed turn to checkpoint memory.
+The REOS Python kernel runs `reos.quality.audit_output` after synthesis and before writing the completed turn to checkpoint memory. Each completed turn persists its request, analysis, adversarial review, synthesis, quality report, and evidence-register snapshot. The returned `AthenaResponse.turn_history` exposes this audit history. Historical turns created before the quality gate are explicitly marked `LEGACY_TURN_NOT_AUDITED` with WARN; they are not retroactively treated as audited.
 
 | Check | Result |
 |---|---|
@@ -132,7 +132,7 @@ The optional Python adapters currently cover OpenAI, Anthropic, and Google Gemin
 12. Quality reports are exposed to callers and CLI users.
 13. Deterministic tests require no provider credentials.
 14. A real provider run is only claimed after the manually gated live smoke test passes.
-15. A fixed adversarial evaluation corpus demonstrates that quality improves without unacceptable false-block rates before production-grade claims are made.\n16. Source excerpts are never inserted into system-role instructions; prompt-injection text inside them is handled as untrusted data.\n17. Synthesis includes the assumption register and complete experiment-card fields or records unavailable fields as UNKNOWN.
+15. A fixed adversarial evaluation corpus demonstrates that quality improves without unacceptable false-block rates before production-grade claims are made.\n15a. Each completed turn retains the full three-pass output, per-turn quality report, and evidence-register snapshot; legacy turns are marked unaudited.\n16. Source excerpts are never inserted into system-role instructions; prompt-injection text inside them is handled as untrusted data.\n17. Synthesis includes the assumption register and complete experiment-card fields or records unavailable fields as UNKNOWN.
 
 ## Known gap / next validation frontier
 

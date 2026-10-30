@@ -70,16 +70,20 @@ The REOS Python kernel runs `reos.quality.audit_output` after synthesis and befo
 |---|---|
 | Numeric claim not found in user input or cited registered excerpt with matching value and unit | WARN |
 | Proposed numeric threshold explicitly labelled with a rationale | WARN, recorded as a provisional parameter |
-| ESTABLISHED claim without a registered reference | WARN |\n| Unsupported country/market-wide generalization stated as fact without a source | WARN |
+| ESTABLISHED claim without a registered reference | WARN |
+| Unsupported country/market-wide generalization stated as fact without a source | WARN |
 | Recommendation to collect raw or identifying business/customer data | BLOCK |
 | Conflicting decision statements | WARN |
 | Missing explicit decision | WARN |
-| Missing falsification/discriminating test | WARN |\n| Missing epistemic classification labels | WARN |\n| Missing assumption register | WARN |\n| Incomplete experiment card (hypothesis, intervention, observable, metric, decision rule) | WARN |
+| Missing falsification/discriminating test | WARN |
+| Missing epistemic classification labels | WARN |
+| Missing assumption register | WARN |
+| Incomplete experiment card (hypothesis, intervention, observable, metric, decision rule) | WARN |
 
 - A BLOCK raises `AthenaOutputError`; the turn is not appended to completed session history.
 - WARN findings remain visible in `AthenaResponse.quality_report` and the CLI.
 - PASS means only that no configured rule fired. It does **not** prove factual correctness, completeness, fairness, or model independence.
-- Numeric claims cited to evidence require the same parsed quantity and unit to appear in that reference's supplied excerpt. The scanner is rule-based and conservative; it does not yet understand every spelled-out number, unit conversion, implied quantity, table layout, or semantic paraphrase. Human review and a fixed evaluation corpus remain necessary.
+- Numeric claims cited to evidence require the same parsed quantity and unit to appear in that reference's supplied excerpt. The scanner is rule-based and conservative. It recognizes common currency prefixes/scales, selected Arabic currency forms, Arabic-Indic numerals, ratios, and selected unlabelled quality metrics such as precision, recall, and FPR. It does not yet understand every spelled-out number, unit conversion, implied quantity, table layout, or semantic paraphrase. Human review and a fixed evaluation corpus remain necessary.
 - The contradiction detector is a lexical heuristic, not a general natural-language entailment proof. It can miss conditional or scoped contradictions and can flag some compatible alternatives.
 - The sensitive-data detector is a targeted guard, not a complete DLP system. Minimize data regardless of whether a rule fires.
 

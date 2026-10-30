@@ -69,7 +69,7 @@ def test_memory_isolated_between_session_ids() -> None:
 
 
 @pytest.mark.parametrize(
-    ("request", "session_id"),
+    ("request_text", "session_id"),
     [
         ("", "valid-session"),
         ("   ", "valid-session"),
@@ -77,11 +77,11 @@ def test_memory_isolated_between_session_ids() -> None:
         ("valid request", "   "),
     ],
 )
-def test_rejects_empty_request_or_session_id(request: str, session_id: str) -> None:
+def test_rejects_empty_request_or_session_id(request_text: str, session_id: str) -> None:
     agent, _analyst, _reviewer = make_agent()
 
     with pytest.raises(ValueError):
-        agent.invoke(request, session_id=session_id)
+        agent.invoke(request_text, session_id=session_id)
 
 
 def test_requires_distinct_model_instances_for_analysis_and_review() -> None:

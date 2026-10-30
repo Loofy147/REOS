@@ -26,6 +26,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def open_checkpoint_database(database_path: Path) -> sqlite3.Connection:
+    """Open a local checkpoint DB with owner-only POSIX permissions."""
+    database_path = database_path.expanduser()
+    database_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name == "posix":
+        database_fd = os.open(str(database_path), os.O_CREAT | os.O_RDWR, 0o600)
+        os.close(database_fd)
+        os.chmod(database_path, 0o600)
+    return sqlite3.connect(str(database_path), check_same_thread=False)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -64,14 +75,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         analysis_model = init_chat_model(analysis_spec, temperature=0)
         review_model = init_chat_model(review_spec, temperature=0)
-        database_path = Path(args.database).expanduser()
-        database_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        if os.name == "posix":
-            # Checkpoints retain prompts and outputs; restrict the file to this OS user.
-            database_fd = os.open(str(database_path), os.O_CREAT | os.O_RDWR, 0o600)
-            os.close(database_fd)
-            os.chmod(database_path, 0o600)
-        connection = sqlite3.connect(str(database_path), check_same_thread=False)
+        database_path = Path(args.database)
+        connection = open_checkpoint_database(database_path)
         try:
             checkpointer = SqliteSaver(connection)
             checkpointer.setup()

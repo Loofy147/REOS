@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from reos.quality import FindingCode, QualityStatus, audit_output
+from reos.quality import EvidenceReference, FindingCode, QualityStatus, audit_output
 
 
 def codes(report) -> set[str]:
@@ -68,7 +68,21 @@ def test_established_claim_requires_an_evidence_reference() -> None:
     assert FindingCode.UNSOURCED_ESTABLISHED_CLAIM.value in codes(report)
 
 
-def test_established_claim_with_local_evidence_reference_is_not_flagged() -> None:
+def test_established_claim_with_registered_evidence_reference_is_not_flagged() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The market is unknown.",
+        critique="The evidence is limited.",
+        answer="ESTABLISHED: The cited regulation applies [E1].",
+        evidence_references=(
+            EvidenceReference("E1", "Official source", "2026-10-30"),
+        ),
+    )
+
+    assert FindingCode.UNSOURCED_ESTABLISHED_CLAIM.value not in codes(report)
+
+
+def test_unregistered_citation_token_does_not_prove_established_claim() -> None:
     report = audit_output(
         request="Assess the launch.",
         analysis="The market is unknown.",
@@ -76,7 +90,7 @@ def test_established_claim_with_local_evidence_reference_is_not_flagged() -> Non
         answer="ESTABLISHED: The cited regulation applies [E1].",
     )
 
-    assert FindingCode.UNSOURCED_ESTABLISHED_CLAIM.value not in codes(report)
+    assert FindingCode.UNSOURCED_ESTABLISHED_CLAIM.value in codes(report)
 
 
 def test_sensitive_raw_business_data_request_blocks_the_output() -> None:

@@ -313,7 +313,6 @@ def audit_output(
     )
     has_negative = any(
         _NEGATIVE_DECISION_RE.search(sentence)
-        and not _POSITIVE_DECISION_RE.search(sentence)
         for sentence in decision_sentences
     )
     if has_positive and has_negative:

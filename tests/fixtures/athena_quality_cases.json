@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "description": "Fixed multilingual regression corpus for deterministic ATHENA output lint. Synthetic tests, not a model benchmark.",
+  "cases": [
+    {
+      "id": "en-unsupported-percentage",
+      "language": "en",
+      "request": "The budget is limited.",
+      "analysis": "The plan will save 80% of the budget.",
+      "critique": "No source or cost breakdown supports the estimate.",
+      "answer": "UNKNOWN: savings are unmeasured. Decision: do not approve the full build. Assumptions: the workflow can be tested cheaply. Hypothesis: a narrow pilot will reveal adoption. Intervention: run a concierge pilot. Observable: target users complete the workflow. Metric: completion and paid conversion. Decision rule: compare measured contribution margin with delivery cost. Falsification test: stop if users do not complete the core workflow.",
+      "expected_status": "WARN",
+      "expected_findings": [
+        "UNSUPPORTED_NUMERIC_CLAIM"
+      ]
+    },
+    {
+      "id": "ar-market-stereotype",
+      "language": "ar",
+      "request": "قيّم إطلاق منتج رقمي في الجزائر.",
+      "analysis": "",
+      "critique": "",
+      "answer": "UNKNOWN: لا توجد بيانات موثوقة عن سلوك الدفع. Decision: أجّل الإطلاق الكامل. Assumptions: لم يتم التحقق من قناة الدفع. السوق الجزائري يعتمد بشكل كبير على الاقتصاد النقدي. Hypothesis: قد تختلف تفضيلات الدفع حسب الشريحة. Falsification test: قِس السلوك الفعلي في الشريحة المستهدفة.",
+      "expected_status": "WARN",
+      "expected_findings": [
+        "UNSOURCED_CONTEXTUAL_GENERALIZATION"
+      ]
+    },
+    {
+      "id": "ar-hypothesis-market",
+      "language": "ar",
+      "request": "قيّم إطلاق منتج رقمي في الجزائر.",
+      "analysis": "",
+      "critique": "",
+      "answer": "UNKNOWN: لا نملك بيانات كافية. Decision: نفّذ اختباراً محدوداً. Assumptions: المشكلة متكررة لدى الشريحة. HYPOTHESIS: قد يفضّل بعض العملاء الدفع النقدي. Falsification test: قارن سلوك الدفع الملاحظ في الشريحة.",
+      "expected_status": "PASS",
+      "expected_findings": []
+    },
+    {
+      "id": "ar-sensitive-raw-records",
+      "language": "ar",
+      "request": "قيّم تجربة منتج للشركات الصغيرة.",
+      "analysis": "",
+      "critique": "",
+      "answer": "Decision: تابع التجربة. اطلب من العملاء سجلات مبيعات خام وقائمة الموردين لإثبات الجدية. Falsification test: راقب الاستخدام.",
+      "expected_status": "BLOCK",
+      "expected_findings": [
+        "SENSITIVE_DATA_REQUEST"
+      ]
+    },
+    {
+      "id": "en-aggregated-control",
+      "language": "en",
+      "request": "Assess the business pilot.",
+      "analysis": "",
+      "critique": "",
+      "answer": "Decision: run the pilot. Use aggregated, anonymized sales totals; do not collect raw records. Falsification test: measure repeated completion of the core workflow.",
+      "expected_status": "PASS",
+      "expected_findings": []
+    },
+    {
+      "id": "en-customer-count-does-not-prove-ratio",
+      "language": "en",
+      "request": "We have 5 pilot customers.",
+      "analysis": "2 of 5 customers are expected to pay.",
+      "critique": "The numerator is not supported by observed behavior.",
+      "answer": "Decision: defer the full launch. Assumptions: willingness to pay is unknown. Falsification test: observe real payment behavior at a disclosed price.",
+      "expected_status": "WARN",
+      "expected_findings": [
+        "UNSUPPORTED_NUMERIC_CLAIM"
+      ]
+    },
+    {
+      "id": "en-fake-citation",
+      "language": "en",
+      "request": "Assess the market.",
+      "analysis": "",
+      "critique": "",
+      "answer": "ESTABLISHED: The market is worth $10 million [E99]. Decision: defer. Assumptions: demand is unverified. Falsification test: measure paid demand.",
+      "expected_status": "WARN",
+      "expected_findings": [
+        "UNSUPPORTED_NUMERIC_CLAIM",
+        "UNSOURCED_ESTABLISHED_CLAIM"
+      ]
+    }
+  ]
+}

@@ -116,11 +116,15 @@ _METRIC_LABEL_PATTERN = (
     r"معدل\s+الإيجابيات\s+الكاذبة|معدل\s+السلبيات\s+الكاذبة|"
     r"معدل\s+التحويل|نسبة\s+التحويل|الدقة|الاستدعاء|الهامش|الاحتفاظ|التسرب|الاحتمال|درجة\s+المخاطر"
 )
-_BARE_METRIC_RE = re.compile(
-    rf"(?:(?:mean|average)\s+)?(?P<label>{_METRIC_LABEL_PATTERN})\s*(?:mean|average|is|was|of|=|:|بلغ|يساوي|وصل\s+إلى)?\s*"
-    rf"(?P<value>\d+(?:[.,]\d+)?)|"
-    rf"(?P<value_after>\d+(?:[.,]\d+)?)\s*(?:for|in|of)?\s*"
-    rf"(?P<label_after>{_METRIC_LABEL_PATTERN}))",
+_METRIC_AFTER_LABEL_RE = re.compile(
+    rf"(?:(?:mean|average)\\s+)?(?P<label>{_METRIC_LABEL_PATTERN})\\s*"
+    rf"(?:mean|average|is|was|of|=|:|بلغ|يساوي|وصل\\s+إلى)?\\s*"
+    rf"(?P<value>\\d+(?:[.,]\\d+)?)",
+    re.IGNORECASE,
+)
+_METRIC_BEFORE_LABEL_RE = re.compile(
+    rf"(?P<value>\\d+(?:[.,]\\d+)?)\\s*(?:for|in|of)?\\s*"
+    rf"(?P<label>{_METRIC_LABEL_PATTERN})",
     re.IGNORECASE,
 )
 _DIGIT_TRANSLATION = str.maketrans(
@@ -275,12 +279,11 @@ def _metric_tokens(text: str) -> set[str]:
     """Extract numeric quantities with units, currency scales, ratios, and metric labels."""
     text = text.translate(_DIGIT_TRANSLATION)
     claims: set[str] = set()
-    for match in _BARE_METRIC_RE.finditer(text):
-        label = match.group("label") or match.group("label_after")
-        value = match.group("value") or match.group("value_after")
-        normalized_label = re.sub(r"\\s+", "_", label.lower())
-        normalized_value = value.replace(",", ".")
-        claims.add(f"metric:{normalized_label}={normalized_value}")
+    for metric_pattern in (_METRIC_AFTER_LABEL_RE, _METRIC_BEFORE_LABEL_RE):
+        for match in metric_pattern.finditer(text):
+            normalized_label = re.sub(r"\\s+", "_", match.group("label").lower())
+            normalized_value = match.group("value").replace(",", ".")
+            claims.add(f"metric:{normalized_label}={normalized_value}")
     ratio_spans: list[tuple[int, int]] = []
     currency_scale_spans: list[tuple[int, int]] = []
     prefix_currency_spans: list[tuple[int, int]] = []

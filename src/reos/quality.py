@@ -105,13 +105,13 @@ _DECISION_RE = re.compile(
     re.IGNORECASE,
 )
 _POSITIVE_DECISION_RE = re.compile(
-    r"(?:\\bproceed\\b|\\bgo ahead\\b|\\blaunch\\b|\\bapprove\\b|\\bbuild\\b|"
-    r"المضي\\s+قدماً|المضي\\s+قدمًا|إطلاق|اعتماد|ابدأ|استمر)",
+    r"(?:\bproceed\b|\bgo ahead\b|\blaunch\b|\bapprove\b|\bbuild\b|"
+    r"المضي\s+قدماً|المضي\s+قدمًا|إطلاق|اعتماد|ابدأ|استمر)",
     re.IGNORECASE,
 )
 _NEGATED_ACTION_RE = re.compile(
-    r"(?:\\b(?:do not|don't|never)\\s+(?:proceed|go ahead|launch|approve|build)\\b|"
-    r"لا\\s+(?:تطلق|تبدأ|تعتمد|تمضِ|توافق))",
+    r"(?:\b(?:do not|don't|never)\s+(?:proceed|go ahead|launch|approve|build)\b|"
+    r"لا\s+(?:تطلق|تبدأ|تعتمد|تمضِ|توافق))",
     re.IGNORECASE,
 )
 _NEGATIVE_DECISION_RE = re.compile(
@@ -143,8 +143,8 @@ _NEGATED_REQUEST_RE = re.compile(
 def _sentences(text: str) -> Iterable[str]:
     """Split prose without deleting substantive leading numbers such as '2 of 5'."""
     for item in _SENTENCE_RE.split(text):
-        sentence = item.strip(" \\t-*•")
-        sentence = re.sub(r"^\\(?\\d{1,3}[.)]\\s+", "", sentence)
+        sentence = item.strip(" \t-*•")
+        sentence = re.sub(r"^\(?\d{1,3}[.)]\s+", "", sentence)
         sentence = sentence.lstrip(" :")
         if sentence:
             yield sentence

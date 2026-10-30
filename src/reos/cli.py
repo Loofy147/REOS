@@ -154,6 +154,11 @@ def main(argv: list[str] | None = None) -> int:
     print(response.critique)
     print("\n## Synthesized answer\n")
     print(response.answer)
+    print(f"\n## Deterministic quality gate: {response.quality_report.status.value}")
+    for finding in response.quality_report.findings:
+        print(f"[{finding.severity.value}] {finding.code.value}: {finding.message}")
+        if finding.excerpt:
+            print(f"  Evidence: {finding.excerpt}")
     persistence = "ephemeral" if args.live_smoke else "SQLite"
     print(f"\nSession: {response.session_id} | Turns: {response.turns_count} | State: {persistence}")
     return 0

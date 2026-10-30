@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+import pytest
+
 from reos.quality import EvidenceReference, FindingCode, QualityStatus, audit_output
 
 
@@ -387,3 +392,24 @@ def test_market_generalization_explicitly_labelled_as_hypothesis_is_allowed() ->
     )
 
     assert FindingCode.UNSOURCED_CONTEXTUAL_GENERALIZATION.value not in codes(report)
+
+
+@pytest.mark.parametrize(
+    "case",
+    json.loads(
+        (Path(__file__).parent / "fixtures" / "athena_quality_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )["cases"],
+    ids=lambda case: case["id"],
+)
+def test_fixed_multilingual_quality_regression_corpus(case: dict[str, object]) -> None:
+    report = audit_output(
+        request=str(case["request"]),
+        analysis=str(case.get("analysis", "")),
+        critique=str(case.get("critique", "")),
+        answer=str(case["answer"]),
+    )
+
+    assert report.status.value == case["expected_status"]
+    assert set(codes(report)).issuperset(set(case["expected_findings"]))

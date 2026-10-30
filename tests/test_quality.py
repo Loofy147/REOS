@@ -413,3 +413,36 @@ def test_fixed_multilingual_quality_regression_corpus(case: dict[str, object]) -
 
     assert report.status.value == case["expected_status"]
     assert set(codes(report)).issuperset(set(case["expected_findings"]))
+
+
+def test_unprovided_currency_prefix_and_scale_are_flagged() -> None:
+    report = audit_output(
+        request="Assess the opportunity; no market-size data is available.",
+        analysis="The addressable market is $10 million.",
+        critique="No source supports the market-size figure.",
+        answer="UNKNOWN: market size is unverified. Decision: defer. Assumptions: target demand is unknown. Falsification test: obtain a traceable market estimate.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)
+
+
+def test_arabic_currency_scale_is_parsed_as_a_distinct_claim() -> None:
+    report = audit_output(
+        request="نحن ندرس سوقاً رقمياً دون تقدير مالي موثوق.",
+        analysis="حجم السوق يقدّر بـ 10 ملايين دينار.",
+        critique="لا يوجد مصدر يدعم التقدير.",
+        answer="UNKNOWN: حجم السوق غير مثبت. Decision: أجّل الإطلاق. Assumptions: الطلب غير معروف. Falsification test: اجمع تقديراً سوقياً بمصدر قابل للتتبع.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)
+
+
+def test_currency_scale_from_user_input_can_be_reused_without_false_warning() -> None:
+    report = audit_output(
+        request="The verified brief reports a $10 million market estimate.",
+        analysis="The supplied brief reports 10 million USD.",
+        critique="The estimate still needs scope limitations.",
+        answer="UNKNOWN: market scope is limited. Decision: use the estimate only for scenario planning. Assumptions: the brief's scope matches the target segment. Falsification test: compare it with a segment-specific source.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value not in codes(report)

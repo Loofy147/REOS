@@ -29,6 +29,7 @@ class EvidenceReference:
     reference_id: str
     source: str
     observed_at: str
+    locator: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,7 +148,9 @@ def _verified_references(
     known = {
         reference.reference_id
         for reference in references
-        if reference.source.strip() and reference.observed_at.strip()
+        if reference.source.strip()
+        and reference.observed_at.strip()
+        and reference.locator.strip()
     }
     return any(match.group(1) in known for match in _REFERENCE_RE.finditer(sentence))
 

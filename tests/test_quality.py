@@ -297,3 +297,63 @@ def test_duplicate_evidence_ids_are_rejected() -> None:
             session_id="duplicate-evidence-id",
             evidence_references=(reference, reference),
         )
+
+
+def test_missing_epistemic_classification_is_reported() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The evidence is incomplete.",
+        critique="More evidence is needed.",
+        answer="Decision: defer the full launch. Falsification test: observe a paid pilot.",
+    )
+
+    assert FindingCode.MISSING_EPISTEMIC_CLASSIFICATION.value in codes(report)
+
+
+def test_missing_assumption_register_is_reported() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The evidence is incomplete.",
+        critique="More evidence is needed.",
+        answer="UNKNOWN: demand is unmeasured. Decision: defer. Falsification test: measure paid demand.",
+    )
+
+    assert FindingCode.MISSING_ASSUMPTION_REGISTER.value in codes(report)
+
+
+def test_incomplete_experiment_card_is_reported() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The evidence is incomplete.",
+        critique="More evidence is needed.",
+        answer=(
+            "UNKNOWN: demand is unmeasured. Assumptions: the problem is important. "
+            "Decision: run a pilot. Hypothesis: customers will use the workflow. "
+            "Falsification test: observe actual use."
+        ),
+    )
+
+    assert FindingCode.INCOMPLETE_EXPERIMENT_CARD.value in codes(report)
+
+
+def test_complete_experiment_card_fields_are_recognized() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The evidence is incomplete.",
+        critique="More evidence is needed.",
+        answer=(
+            "UNKNOWN: paid demand is not yet measured. "
+            "Assumptions: users experience the stated problem. "
+            "Decision: run a limited pilot. "
+            "Hypothesis: the workflow solves the recurring problem. "
+            "Intervention: provide a concierge pilot. "
+            "Observable: users complete the target workflow. "
+            "Metric: successful task completion and paid conversion. "
+            "Decision rule: continue only if measured unit economics are viable. "
+            "Falsification test: observed non-use or no viable paid conversion."
+        ),
+    )
+
+    assert FindingCode.MISSING_EPISTEMIC_CLASSIFICATION.value not in codes(report)
+    assert FindingCode.MISSING_ASSUMPTION_REGISTER.value not in codes(report)
+    assert FindingCode.INCOMPLETE_EXPERIMENT_CARD.value not in codes(report)

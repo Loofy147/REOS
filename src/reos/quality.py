@@ -83,12 +83,12 @@ _UNIT_PATTERN = (
 )
 _RATIO_RE = re.compile(
     rf"(?P<numerator>\\d+)\\s*(?:out\\s+of|of|من\\s+أصل|من)\\s*"
-    rf"(?P<denominator>\\d+)\\s*(?P<unit>{_UNIT_PATTERN})\\b",
+    rf"(?P<denominator>\\d+)\\s*(?P<unit>{_UNIT_PATTERN})(?![\\w])",
     re.IGNORECASE,
 )
 _NUMBER_UNIT_RE = re.compile(
     rf"(?P<value>\\d+(?:[.,]\\d+)?)\\s*[-–]?\\s*"
-    rf"(?:[A-Za-z]+\\s+){{0,2}}(?P<unit>{_UNIT_PATTERN})\\b",
+    rf"(?:[A-Za-z]+\\s+){{0,2}}(?P<unit>{_UNIT_PATTERN})(?![\\w])",
     re.IGNORECASE,
 )
 

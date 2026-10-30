@@ -4,11 +4,11 @@
 
 - Python 3.10+
 - A virtual environment
-- A LangChain chat-model provider integration for the model you intend to use
+- Credentials for the two configured model providers
 
-## 2. Install
+## 2. Install the runtime and provider integrations
 
-Core package and tests:
+Core runtime and tests:
 
 ```bash
 python -m venv .venv
@@ -16,27 +16,64 @@ source .venv/bin/activate
 python -m pip install -e ".[lang,dev]"
 ```
 
-For the OpenAI provider, also install the optional integration:
+Choose the integrations required by your analysis/review model pair:
 
 ```bash
-python -m pip install -e ".[lang,openai,dev]"
+# OpenAI + Anthropic (recommended cross-provider starting point)
+python -m pip install -e ".[lang,openai,anthropic,dev]"
+
+# OpenAI + Google Gemini
+python -m pip install -e ".[lang,openai,google-genai,dev]"
+
+# All three supported integrations
+python -m pip install -e ".[lang,openai,anthropic,google-genai,dev]"
 ```
 
-## 3. Configure model identities
+## 3. Configure model identities and credentials
 
-Set two distinct provider-prefixed model identifiers. The identifiers below
-are examples; select models and provider integrations available to your account.
+Use two distinct provider-prefixed model identifiers. The model names below
+are placeholders; choose model IDs supported by your provider account.
 
 ```bash
 export ATHENA_ANALYSIS_MODEL="openai:<analysis-model>"
-export ATHENA_REVIEW_MODEL="openai:<review-model>"
-export OPENAI_API_KEY="<your-key>"
+export ATHENA_REVIEW_MODEL="anthropic:<review-model>"
+export OPENAI_API_KEY="<your-openai-key>"
+export ANTHROPIC_API_KEY="<your-anthropic-key>"
 ```
 
-Use different model families/providers when stronger independence is required.
-Different prompt templates on the same model do not eliminate correlated error.
+For Gemini, use `google_genai:<model-name>` and set either
+`GOOGLE_API_KEY` or `GEMINI_API_KEY`.
 
-## 4. Run ATHENA
+Different model families or providers reduce some shared failure modes, but
+do not guarantee statistical independence or correctness. Two models from the
+same provider can still have correlated weaknesses.
+
+## 4. Check readiness before spending on model calls
+
+```bash
+reos --doctor
+```
+
+The doctor checks the LangChain/LangGraph runtime, provider integration
+packages, presence of expected credential environment variables, and local
+checkpoint storage permissions. It never prints credential values and does not
+make provider requests. A passing doctor check does not validate that a key is
+accepted, that a model is available to your account, or that quota/network
+access is working.
+
+## 5. Run a provider-backed smoke test
+
+```bash
+reos --live-smoke
+```
+
+This makes a small real run through analysis → independent challenge →
+synthesis. It uses an in-memory checkpoint and a temporary session ID, so it
+does not modify the persistent ATHENA session database. The run uses two model
+calls on the analysis model and one on the review model; normal provider charges
+may apply.
+
+## 6. Run a real task with persistent session state
 
 ```bash
 reos "Assess this product launch plan and identify the next validation test." \
@@ -44,14 +81,13 @@ reos "Assess this product launch plan and identify the next validation test." \
   --database ./data/athena.sqlite
 ```
 
-Reuse the same `--session-id` only to continue that session. The argument is
-required so separate CLI runs cannot silently share a generic default thread.
-Choose a fresh id for each user, project, or trust boundary. Do not use a
-session id as an authentication mechanism. The SQLite file is persistent, sensitive application data. On POSIX the CLI
-creates/restricts it to owner-only permissions (0600); keep its parent directory,
-backups, and host access similarly protected.
+Reuse the same `--session-id` only to continue that session. Choose a fresh id
+for each user, project, or trust boundary. A session id is a namespace, not an
+authentication mechanism. The SQLite file is persistent, sensitive application
+data. On POSIX the CLI creates/restricts it to owner-only permissions (0600);
+keep its parent directory, backups, and host access similarly protected.
 
-## 5. Enable LangSmith tracing (optional)
+## 7. Enable LangSmith tracing (optional)
 
 ```bash
 export LANGSMITH_TRACING=true
@@ -59,16 +95,18 @@ export LANGSMITH_API_KEY="<your-langsmith-key>"
 export LANGSMITH_PROJECT="athena-development"
 ```
 
-Traces can contain prompts and generated outputs. Do not enable tracing for
-sensitive inputs unless the project’s privacy, access, and retention settings
-are appropriate.
+ATHENA attaches `agent`, `agent_version`, `workflow`, and `session_id`
+metadata to each graph run. Traces can contain prompts and generated outputs.
+Do not enable tracing for sensitive inputs unless the project's privacy,
+access, and retention settings are appropriate.
 
-## 6. Verify
+## 8. Verify the local deterministic contract
 
 ```bash
 python -m pytest -q
 ```
 
-The acceptance tests use local deterministic model doubles. A passing unit
-suite proves graph behavior and session isolation; it does not prove a real
-provider credential, provider quota, or production deployment works.
+The acceptance tests use deterministic local model doubles. A passing unit
+suite proves graph behavior, correct conversation roles, failure handling,
+and session isolation; it does not prove a real provider credential, provider
+quota, or production deployment works.

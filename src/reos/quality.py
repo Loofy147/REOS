@@ -21,6 +21,9 @@ class FindingCode(str, Enum):
     CONFLICTING_DECISIONS = "CONFLICTING_DECISIONS"
     MISSING_DECISION = "MISSING_DECISION"
     MISSING_FALSIFICATION_TEST = "MISSING_FALSIFICATION_TEST"
+    MISSING_EPISTEMIC_CLASSIFICATION = "MISSING_EPISTEMIC_CLASSIFICATION"
+    MISSING_ASSUMPTION_REGISTER = "MISSING_ASSUMPTION_REGISTER"
+    INCOMPLETE_EXPERIMENT_CARD = "INCOMPLETE_EXPERIMENT_CARD"
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +99,21 @@ _NUMBER_UNIT_RE = re.compile(
 _SENTENCE_RE = re.compile(r"(?<=[.!?؟؛])\s+|\n+")
 _REFERENCE_RE = re.compile(r"\[([A-Za-z][A-Za-z0-9_-]{0,31})\]")
 _ESTABLISHED_RE = re.compile(r"\bESTABLISHED\s*[:：]", re.IGNORECASE)
+_EPISTEMIC_LABEL_RE = re.compile(
+    r"\b(?:ESTABLISHED|USER_REPORTED|INFERENCE|HYPOTHESIS|UNKNOWN)\b",
+    re.IGNORECASE,
+)
+_ASSUMPTION_RE = re.compile(
+    r"(?:assumptions?|الافتراضات|الافتراض|فرضيات|الفرضيات)",
+    re.IGNORECASE,
+)
+_EXPERIMENT_FIELDS = {
+    "hypothesis": re.compile(r"(?:\bhypothesis\b|\bفرضية\b|\bالفرضية\b)", re.I),
+    "intervention": re.compile(r"(?:\bintervention\b|\baction\b|\bالتدخل\b|\bالإجراء\b)", re.I),
+    "observation": re.compile(r"(?:\bobservable\b|\bobservation\b|\boutcome\b|\bالملاحظة\b|\bالنتيجة\b)", re.I),
+    "metric": re.compile(r"(?:\bmetric\b|\bmeasure\b|\bmeasurement\b|\bمقياس\b|\bالقياس\b)", re.I),
+    "decision_rule": re.compile(r"(?:\bdecision\\s+rule\b|\bdecision\\s+criterion\b|\bقاعدة\\s+القرار\b|\bمعيار\\s+القرار\b)", re.I),
+}
 _PROPOSED_RE = re.compile(r"(?:PROPOSED[_ ]THRESHOLD|عتبة\s+مقترحة)", re.IGNORECASE)
 _RATIONALE_RE = re.compile(
     r"(?:rationale|because|reason|مبرر|المبرر|السبب|لأن|لغاية|بهدف)", re.IGNORECASE
@@ -373,6 +391,40 @@ def audit_output(
                 FindingCode.MISSING_FALSIFICATION_TEST,
                 QualityStatus.WARN,
                 "The answer does not specify a test or observable condition that could change or falsify the recommendation.",
+            )
+        )
+
+    if not _EPISTEMIC_LABEL_RE.search(answer):
+        findings.append(
+            QualityFinding(
+                FindingCode.MISSING_EPISTEMIC_CLASSIFICATION,
+                QualityStatus.WARN,
+                "The final answer does not explicitly classify material claims as ESTABLISHED, USER_REPORTED, INFERENCE, HYPOTHESIS, or UNKNOWN.",
+            )
+        )
+
+    if not _ASSUMPTION_RE.search(answer):
+        findings.append(
+            QualityFinding(
+                FindingCode.MISSING_ASSUMPTION_REGISTER,
+                QualityStatus.WARN,
+                "The final answer does not include an explicit assumption register. State the assumptions that materially affect the decision.",
+            )
+        )
+
+    missing_experiment_fields = [
+        field
+        for field, pattern in _EXPERIMENT_FIELDS.items()
+        if not pattern.search(answer)
+    ]
+    if missing_experiment_fields:
+        findings.append(
+            QualityFinding(
+                FindingCode.INCOMPLETE_EXPERIMENT_CARD,
+                QualityStatus.WARN,
+                "The falsification test is missing experiment-card fields: "
+                + ", ".join(missing_experiment_fields)
+                + ". Include hypothesis, intervention, observable, metric, and decision rule; mark unavailable fields UNKNOWN rather than inventing them.",
             )
         )
 

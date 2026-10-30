@@ -48,7 +48,7 @@ The reviewer must attack claims, assumptions, numerical provenance, decision con
 | HYPOTHESIS | Plausible but unverified | State what observation could test it |
 | UNKNOWN | Required information is unavailable | Do not fill the gap with invented specifics |
 
-Only evidence references passed to `AthenaAgent.invoke(..., evidence_references=...)` are considered registered. Each reference must include an ID, source description, observation date (ISO date), and a retrievable locator such as a URL or stable document identifier. A citation-looking token in generated text is not proof that a source exists. The current CLI does not yet provide a web-research ingestion workflow; without registered references, factual external claims must not be promoted to ESTABLISHED.
+Only evidence references passed to `AthenaAgent.invoke(..., evidence_references=...)` are considered registered. Each reference must include an ID, source description, observation date (ISO date), retrievable locator, and the exact relevant excerpt that was actually inspected. The REOS CLI accepts this register through `--evidence-file`; see `docs/evidence-register.example.json`. The CLI does not fetch URLs or independently authenticate sources: the caller is responsible for retrieving and reviewing the excerpt. A citation-looking token in generated text is not proof that a source exists. Numeric citations must also contain the same parsed value and unit in the registered excerpt. For qualitative claims, the excerpt is passed to analysis and review, but entailment is not proven deterministically.
 
 Do not invent citations, laws, market facts, provider activity, measurements, experiments, or verification. Country-level, cultural, payment, and legal generalizations require actual evidence.
 
@@ -68,7 +68,7 @@ The REOS Python kernel runs `reos.quality.audit_output` after synthesis and befo
 
 | Check | Result |
 |---|---|
-| Numeric claim not found in user input or registered evidence | WARN |
+| Numeric claim not found in user input or cited registered excerpt with matching value and unit | WARN |
 | Proposed numeric threshold explicitly labelled with a rationale | WARN, recorded as a provisional parameter |
 | ESTABLISHED claim without a registered reference | WARN |
 | Recommendation to collect raw or identifying business/customer data | BLOCK |
@@ -79,7 +79,7 @@ The REOS Python kernel runs `reos.quality.audit_output` after synthesis and befo
 - A BLOCK raises `AthenaOutputError`; the turn is not appended to completed session history.
 - WARN findings remain visible in `AthenaResponse.quality_report` and the CLI.
 - PASS means only that no configured rule fired. It does **not** prove factual correctness, completeness, fairness, or model independence.
-- The numeric scanner is rule-based and conservative. It does not yet understand every spelled-out number, unit conversion, implied quantity, table layout, or semantic paraphrase. Human review and a fixed evaluation corpus remain necessary.
+- Numeric claims cited to evidence require the same parsed quantity and unit to appear in that reference's supplied excerpt. The scanner is rule-based and conservative; it does not yet understand every spelled-out number, unit conversion, implied quantity, table layout, or semantic paraphrase. Human review and a fixed evaluation corpus remain necessary.
 - The contradiction detector is a lexical heuristic, not a general natural-language entailment proof.
 - The sensitive-data detector is a targeted guard, not a complete DLP system. Minimize data regardless of whether a rule fires.
 
@@ -120,7 +120,7 @@ The optional Python adapters currently cover OpenAI, Anthropic, and Google Gemin
 4. Prior user/assistant messages retain correct roles and thread isolation.
 5. Blank requests and session IDs are rejected.
 6. Empty model-stage output fails the run and does not record a completed turn.
-7. Numeric claims not traceable to request/evidence are surfaced.
+7. Numeric claims not traceable to request or cited excerpt with a matching value/unit are surfaced.\n7a. Evidence register inputs require a source, ISO observation date, locator, and inspected excerpt; duplicate IDs and malformed inputs are rejected.
 8. An unregistered citation token does not validate an ESTABLISHED claim.
 9. An explicit proposed threshold is distinguished from an empirical fact.
 10. A raw sensitive-data collection recommendation is blocked before turn recording.

@@ -48,7 +48,7 @@ The reviewer must attack claims, assumptions, numerical provenance, decision con
 | HYPOTHESIS | Plausible but unverified | State what observation could test it |
 | UNKNOWN | Required information is unavailable | Do not fill the gap with invented specifics |
 
-Only evidence references passed to `AthenaAgent.invoke(..., evidence_references=...)` are considered registered. Each reference must include an ID, source description, observation date (ISO date), retrievable locator, and the exact relevant excerpt that was actually inspected. The REOS CLI accepts this register through `--evidence-file`; see `docs/evidence-register.example.json`. The CLI does not fetch URLs or independently authenticate sources: the caller is responsible for retrieving and reviewing the excerpt. A citation-looking token in generated text is not proof that a source exists. Numeric citations must also contain the same parsed value and unit in the registered excerpt. For qualitative claims, the excerpt is passed to analysis and review, but entailment is not proven deterministically.
+Only evidence references passed to `AthenaAgent.invoke(..., evidence_references=...)` are considered registered. Each reference must include an ID, source description, observation date (ISO date), retrievable locator, and the exact relevant excerpt that was actually inspected. The REOS CLI accepts this register through `--evidence-file`; see `docs/evidence-register.example.json`. The CLI does not fetch URLs or independently authenticate sources: the caller is responsible for retrieving and reviewing the excerpt. A citation-looking token in generated text is not proof that a source exists. Numeric citations must also contain the same parsed value and unit in the registered excerpt. Source excerpts and locators are passed to the models as untrusted user-level data, never appended to system messages. For qualitative claims, the excerpt is available to analysis and review, but semantic entailment and source authenticity are not proven deterministically.
 
 Do not invent citations, laws, market facts, provider activity, measurements, experiments, or verification. Country-level, cultural, payment, and legal generalizations require actual evidence.
 
@@ -62,7 +62,7 @@ Every material numeric claim must be:
 
 A proposed threshold is an experiment parameter, not a market statistic, forecast, benchmark, empirical success rate, or validated probability. Never invent percentages, sample sizes, savings, conversion rates, costs, timelines, or pass/fail counts. When the data cannot support a number, preserve UNKNOWN and define how to measure it.
 
-## Deterministic quality gate
+## Decision and experiment contract\n\nThe synthesis must state a decision, an explicit assumption register, and an experiment card with a testable hypothesis, intervention, observable outcome, measurement metric, and decision rule. Unsupported numeric cutoffs must be labelled `PROPOSED_THRESHOLD`; when a field cannot be grounded, mark it `UNKNOWN` and specify what information is missing. This prevents a vague instruction such as “test demand” from being presented as a fully specified experiment.\n\n## Deterministic quality gate
 
 The REOS Python kernel runs `reos.quality.audit_output` after synthesis and before writing the completed turn to checkpoint memory.
 
@@ -74,13 +74,13 @@ The REOS Python kernel runs `reos.quality.audit_output` after synthesis and befo
 | Recommendation to collect raw or identifying business/customer data | BLOCK |
 | Conflicting decision statements | WARN |
 | Missing explicit decision | WARN |
-| Missing falsification/discriminating test | WARN |
+| Missing falsification/discriminating test | WARN |\n| Missing epistemic classification labels | WARN |\n| Missing assumption register | WARN |\n| Incomplete experiment card (hypothesis, intervention, observable, metric, decision rule) | WARN |
 
 - A BLOCK raises `AthenaOutputError`; the turn is not appended to completed session history.
 - WARN findings remain visible in `AthenaResponse.quality_report` and the CLI.
 - PASS means only that no configured rule fired. It does **not** prove factual correctness, completeness, fairness, or model independence.
 - Numeric claims cited to evidence require the same parsed quantity and unit to appear in that reference's supplied excerpt. The scanner is rule-based and conservative; it does not yet understand every spelled-out number, unit conversion, implied quantity, table layout, or semantic paraphrase. Human review and a fixed evaluation corpus remain necessary.
-- The contradiction detector is a lexical heuristic, not a general natural-language entailment proof.
+- The contradiction detector is a lexical heuristic, not a general natural-language entailment proof. It can miss conditional or scoped contradictions and can flag some compatible alternatives.
 - The sensitive-data detector is a targeted guard, not a complete DLP system. Minimize data regardless of whether a rule fires.
 
 These limitations are intentional and must be visible in evaluations. Do not describe the gate as a truth verifier.
@@ -128,7 +128,7 @@ The optional Python adapters currently cover OpenAI, Anthropic, and Google Gemin
 12. Quality reports are exposed to callers and CLI users.
 13. Deterministic tests require no provider credentials.
 14. A real provider run is only claimed after the manually gated live smoke test passes.
-15. A fixed adversarial evaluation corpus demonstrates that quality improves without unacceptable false-block rates before production-grade claims are made.
+15. A fixed adversarial evaluation corpus demonstrates that quality improves without unacceptable false-block rates before production-grade claims are made.\n16. Source excerpts are never inserted into system-role instructions; prompt-injection text inside them is handled as untrusted data.\n17. Synthesis includes the assumption register and complete experiment-card fields or records unavailable fields as UNKNOWN.
 
 ## Known gap / next validation frontier
 

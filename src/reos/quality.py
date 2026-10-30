@@ -78,17 +78,17 @@ class QualityReport:
 _UNIT_PATTERN = (
     r"percent(?:age)?|%|٪|days?|weeks?|months?|years?|hours?|minutes?|"
     r"users?|customers?|clients?|interviews?|sales?|records?|units?|"
-    r"\\$|€|دج|دينار|يوم|أيام|يوماً|يومًا|أسبوع|أسابيع|أسبوعين|"
+    r"\$|€|دج|دينار|يوم|أيام|يوماً|يومًا|أسبوع|أسابيع|أسبوعين|"
     r"شهر|أشهر|ساعة|ساعات|عميل|عملاء|مستخدم|مستخدمين|مقابلة|مقابلات|سجل|سجلات|مبيعات"
 )
 _RATIO_RE = re.compile(
-    rf"(?P<numerator>\\d+)\\s*(?:out\\s+of|of|من\\s+أصل|من)\\s*"
-    rf"(?P<denominator>\\d+)\\s*(?P<unit>{_UNIT_PATTERN})(?![\\w])",
+    rf"(?P<numerator>\d+)\s*(?:out\s+of|of|من\s+أصل|من)\s*"
+    rf"(?P<denominator>\d+)\s*(?P<unit>{_UNIT_PATTERN})(?![\w])",
     re.IGNORECASE,
 )
 _NUMBER_UNIT_RE = re.compile(
-    rf"(?P<value>\\d+(?:[.,]\\d+)?)\\s*[-–]?\\s*"
-    rf"(?:[A-Za-z]+\\s+){{0,2}}(?P<unit>{_UNIT_PATTERN})(?![\\w])",
+    rf"(?P<value>\d+(?:[.,]\d+)?)\s*[-–]?\s*"
+    rf"(?:[A-Za-z]+\s+){{0,2}}(?P<unit>{_UNIT_PATTERN})(?![\w])",
     re.IGNORECASE,
 )
 

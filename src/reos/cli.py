@@ -45,6 +45,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    # Enable strict checkpoint deserialization before importing the checkpointer.
+    os.environ.setdefault("LANGGRAPH_STRICT_MSGPACK", "true")
+
     try:
         from langchain.chat_models import init_chat_model
         from langgraph.checkpoint.sqlite import SqliteSaver
@@ -58,13 +61,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    # Strict msgpack handling is recommended for persistent checkpoints.
-    os.environ.setdefault("LANGGRAPH_STRICT_MSGPACK", "true")
-
     try:
         analysis_model = init_chat_model(analysis_spec, temperature=0)
         review_model = init_chat_model(review_spec, temperature=0)
-        connection = sqlite3.connect(str(Path(args.database)), check_same_thread=False)
+        database_path = Path(args.database).expanduser()
+        database_path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(str(database_path), check_same_thread=False)
         try:
             checkpointer = SqliteSaver(connection)
             checkpointer.setup()

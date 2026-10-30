@@ -209,3 +209,25 @@ def test_evidence_reference_with_invalid_date_is_not_registered() -> None:
     )
 
     assert FindingCode.UNSOURCED_ESTABLISHED_CLAIM.value in codes(report)
+
+
+def test_same_number_with_different_unit_is_not_treated_as_user_supplied() -> None:
+    report = audit_output(
+        request="We have 5 pilot customers.",
+        analysis="The team expects 5% conversion.",
+        critique="The conversion estimate has no source.",
+        answer="Decision: defer launch. Falsification test: measure actual paid conversion.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)
+
+
+def test_customer_ratio_is_not_grounded_by_customer_count_alone() -> None:
+    report = audit_output(
+        request="We have 5 pilot customers.",
+        analysis="2 of 5 customers will pay.",
+        critique="The numerator is not supported by observed behavior.",
+        answer="Decision: defer. Falsification test: collect real paid conversion evidence.",
+    )
+
+    assert FindingCode.UNSUPPORTED_NUMERIC_CLAIM.value in codes(report)

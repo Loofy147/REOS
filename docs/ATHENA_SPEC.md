@@ -71,8 +71,9 @@ chain-of-thought.
   are included in later analysis context.
 - The in-memory checkpointer is a process-local development default.
 - The CLI uses SQLite checkpoints for persistence between process runs.
-- Treat checkpoint databases as sensitive data: protect file permissions,
-  backups, retention, and access; do not store secrets in prompts.
+- Treat checkpoint databases as sensitive data: the CLI restricts POSIX database file
+  permissions to the invoking OS user, but operators remain responsible for directory
+  permissions, backups, retention, and access. Do not store secrets in prompts.
 
 ## Observability
 
@@ -93,7 +94,9 @@ outputs; apply suitable access and retention controls before using real data.
 4. Separate thread ids do not expose each other's history.
 5. Blank requests and blank thread ids are rejected.
 6. Unit tests are deterministic and do not require provider credentials.
-7. A real provider run is only claimed after separately configured credentials
+7. Failed/empty stages cannot be reported as completed turns.
+8. CLI session ids are explicit and persistent checkpoint files are owner-only on POSIX.
+9. A real provider run is only claimed after separately configured credentials
    and an explicit provider-backed smoke test.
 
 ## Non-goals for v0.1

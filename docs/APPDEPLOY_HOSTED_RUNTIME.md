@@ -78,7 +78,7 @@ distinct model configurations or providers.
   model calls and persisted the resulting turn. AppDeploy status checks and
   screenshot capture do not alone prove that an authenticated AI turn worked.
 
-## REOS relationship and next gate
+## Quality-gate parity status\n\nThe deterministic quality gate described in `docs/ATHENA_SPEC.md` currently exists in the REOS Python runtime only. It has **not** been implemented in this AppDeploy-hosted snapshot. The deployed app must not be described as having numeric provenance checks, registered-evidence enforcement, sensitive-data recommendation blocking, decision-consistency checks, or quality-report output until a separate AppDeploy source update is deployed and its authenticated runtime is verified.\n\n## REOS relationship and next gate
 
 The Python REOS agent and this AppDeploy-hosted runtime are two implementations
 of the ATHENA contract at this stage. No Python HTTP adapter or authenticated

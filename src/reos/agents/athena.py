@@ -145,7 +145,7 @@ class AthenaAgent:
             result = analysis_model.invoke(messages, config=config)
             return {"analysis": _content_text(result)}
 
-        def challenge(state: AthenaState, config: dict[str, Any]) -> dict[str, str]:
+        def challenge(state: AthenaState, config: RunnableConfig) -> dict[str, str]:
             messages = [
                 SystemMessage(content=REVIEW_SYSTEM_PROMPT),
                 HumanMessage(

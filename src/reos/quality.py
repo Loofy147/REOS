@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
+from decimal import Decimal
 from dataclasses import dataclass
 from enum import Enum
 from typing import Iterable
@@ -83,7 +84,7 @@ class QualityReport:
 _UNIT_PATTERN = (
     r"percent(?:age)?|%|٪|days?|weeks?|months?|years?|hours?|minutes?|"
     r"users?|customers?|clients?|interviews?|sales?|records?|units?|"
-    r"\$|€|دج|دينار|يوم|أيام|يوماً|يومًا|أسبوع|أسابيع|أسبوعين|"
+    r"\$|€|USD|EUR|DZD|dollars?|euros?|dinars?|دج|دينار|يوم|أيام|يوماً|يومًا|أسبوع|أسابيع|أسبوعين|"
     r"شهر|أشهر|ساعة|ساعات|عميل|عملاء|مستخدم|مستخدمين|مقابلة|مقابلات|سجل|سجلات|مبيعات"
 )
 _RATIO_RE = re.compile(
@@ -96,6 +97,29 @@ _NUMBER_UNIT_RE = re.compile(
     rf"(?:[A-Za-z]+\s+){{0,2}}(?P<unit>{_UNIT_PATTERN})(?![\w])",
     re.IGNORECASE,
 )
+_CURRENCY_SCALE_RE = re.compile(
+    r"(?:(?P<prefix>\$|€|USD|EUR|DZD|دج|دينار)\s*)?"
+    r"(?P<value>\d+(?:[.,]\d+)?)\s*"
+    r"(?P<scale>thousand|million|billion|ألف|آلاف|مليون|ملايين|مليار|مليارات)\s*"
+    r"(?P<suffix>USD|EUR|DZD|dollars?|euros?|dinars?|دج|دينار|\$|€)?",
+    re.IGNORECASE,
+)
+_PREFIX_CURRENCY_RE = re.compile(
+    r"(?P<unit>\$|€|USD|EUR|DZD|دج|دينار)\s*"
+    r"(?P<value>\d+(?:[.,]\d+)?)(?![\w])",
+    re.IGNORECASE,
+)
+_SCALE_FACTORS = {
+    "thousand": Decimal("1000"),
+    "ألف": Decimal("1000"),
+    "آلاف": Decimal("1000"),
+    "million": Decimal("1000000"),
+    "مليون": Decimal("1000000"),
+    "ملايين": Decimal("1000000"),
+    "billion": Decimal("1000000000"),
+    "مليار": Decimal("1000000000"),
+    "مليارات": Decimal("1000000000"),
+}
 
 _SENTENCE_RE = re.compile(r"(?<=[.!?؟؛])\s+|\n+")
 _REFERENCE_RE = re.compile(r"\[([A-Za-z][A-Za-z0-9_-]{0,31})\]")
@@ -208,17 +232,32 @@ def _canonical_unit(unit: str) -> str:
         return "interviews"
     if lowered in {"record", "records", "سجل", "سجلات"}:
         return "records"
-    if lowered in {"دج", "دينار"}:
+    if lowered in {"دج", "دينار", "dinar", "dinars", "dzd"}:
         return "DZD"
-    if lowered in {"$", "€"}:
-        return lowered
+    if lowered in {"$", "usd", "dollar", "dollars"}:
+        return "USD"
+    if lowered in {"€", "eur", "euro", "euros"}:
+        return "EUR"
     return lowered
 
 
+def _decimal_string(value: Decimal) -> str:
+    normalized = value.normalize()
+    return format(normalized, "f")
+
+
+def _scaled_currency(value: str, scale: str) -> str:
+    factor = _SCALE_FACTORS.get(scale.lower(), Decimal("1"))
+    return _decimal_string(Decimal(value.replace(",", ".")) * factor)
+
+
 def _metric_tokens(text: str) -> set[str]:
-    """Extract numeric quantities with units; counts and percentages are distinct."""
+    """Extract numeric quantities with units, including currency scales and ratios."""
     claims: set[str] = set()
     ratio_spans: list[tuple[int, int]] = []
+    currency_scale_spans: list[tuple[int, int]] = []
+    prefix_currency_spans: list[tuple[int, int]] = []
+
     for match in _RATIO_RE.finditer(text):
         ratio_spans.append(match.span())
         unit = _canonical_unit(match.group("unit"))
@@ -226,10 +265,30 @@ def _metric_tokens(text: str) -> set[str]:
             f"ratio:{match.group('numerator')}/{match.group('denominator')}:{unit}"
         )
 
+    for match in _CURRENCY_SCALE_RE.finditer(text):
+        currency = match.group("prefix") or match.group("suffix")
+        if not currency:
+            continue
+        currency_scale_spans.append(match.span())
+        unit = _canonical_unit(currency)
+        value = _scaled_currency(match.group("value"), match.group("scale"))
+        claims.add(f"{value}:{unit}")
+
+    for match in _PREFIX_CURRENCY_RE.finditer(text):
+        if any(
+            match.start() < end and match.end() > start
+            for start, end in currency_scale_spans
+        ):
+            continue
+        prefix_currency_spans.append(match.span())
+        unit = _canonical_unit(match.group("unit"))
+        value = match.group("value").replace(",", ".")
+        claims.add(f"{value}:{unit}")
+
     for match in _NUMBER_UNIT_RE.finditer(text):
         if any(
             match.start() < end and match.end() > start
-            for start, end in ratio_spans
+            for start, end in ratio_spans + currency_scale_spans + prefix_currency_spans
         ):
             continue
         value = match.group("value").replace(",", ".")

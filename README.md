@@ -3,9 +3,12 @@
 REOS is a provider-neutral foundation for independently configured AI agents and
 coordinated, evidence-oriented engineering workflows.
 
-The first reference agent is **ATHENA**: an independent strategic reasoning
-agent with a separate analysis model, a separate skeptical reviewer, thread-scoped
-memory, and explicit LangSmith observability support.
+The first reference agent is **ATHENA**: a strategic reasoning agent with separately
+configured analysis/review model instances, thread-scoped memory, explicit
+LangSmith observability, and a deterministic quality gate for quantitative
+provenance, registered evidence, privacy-sensitive recommendations, decision
+consistency, and falsification-test completeness. The gate is a lint layer, not
+a truth oracle.
 
 ## Design constraints
 

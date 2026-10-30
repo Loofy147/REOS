@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from dataclasses import dataclass
 from enum import Enum
 from typing import Iterable
@@ -123,6 +124,11 @@ _REQUEST_VERB_RE = re.compile(
     r"ارفع|أرسل|ارسل|شارك|زوّد|زود|اجمع)",
     re.IGNORECASE,
 )
+_NEGATED_REQUEST_RE = re.compile(
+    r"(?:\\b(?:do not|don't|never|avoid|not to)\\s+(?:require|ask|request|upload|send|"
+    r"share|provide|collect)\\b|لا\\s+(?:تطلب|تجمع|ترفع|ترسل|تشارك|تشترط|تزود))",
+    re.IGNORECASE,
+)
 
 
 def _sentences(text: str) -> Iterable[str]:
@@ -145,20 +151,27 @@ def _has_metric(sentence: str) -> bool:
 def _verified_references(
     sentence: str, references: tuple[EvidenceReference, ...]
 ) -> bool:
-    known = {
-        reference.reference_id
-        for reference in references
-        if reference.source.strip()
-        and reference.observed_at.strip()
-        and reference.locator.strip()
-    }
+    known: set[str] = set()
+    for reference in references:
+        if not (reference.source.strip() and reference.locator.strip()):
+            continue
+        try:
+            date.fromisoformat(reference.observed_at)
+        except ValueError:
+            continue
+        known.add(reference.reference_id)
     return any(match.group(1) in known for match in _REFERENCE_RE.finditer(sentence))
 
 
-def _is_proposed_threshold(sentence: str, full_answer: str) -> bool:
-    return bool(_PROPOSED_RE.search(sentence) or _PROPOSED_RE.search(full_answer)) and bool(
-        _RATIONALE_RE.search(full_answer)
+def _is_proposed_threshold(sentences: list[str], index: int) -> bool:
+    current = sentences[index]
+    previous = sentences[index - 1] if index else ""
+    following = sentences[index + 1] if index + 1 < len(sentences) else ""
+    has_label = bool(_PROPOSED_RE.search(current) or _PROPOSED_RE.search(previous))
+    has_rationale = bool(
+        _RATIONALE_RE.search(current) or _RATIONALE_RE.search(following)
     )
+    return has_label and has_rationale
 
 
 def audit_output(
@@ -180,7 +193,8 @@ def audit_output(
     stages = (("analysis", analysis), ("review", critique), ("synthesis", answer))
 
     for stage_name, text in stages:
-        for sentence in _sentences(text):
+        sentences = list(_sentences(text))
+        for index, sentence in enumerate(sentences):
             numbers = _numeric_tokens(sentence)
             if not numbers or not _has_metric(sentence):
                 continue
@@ -188,7 +202,7 @@ def audit_output(
                 continue
             if _verified_references(sentence, evidence_references):
                 continue
-            if _is_proposed_threshold(sentence, text):
+            if _is_proposed_threshold(sentences, index):
                 findings.append(
                     QualityFinding(
                         FindingCode.PROPOSED_THRESHOLD,
@@ -223,7 +237,7 @@ def audit_output(
         if (
             _SENSITIVE_RE.search(sentence)
             and _REQUEST_VERB_RE.search(sentence)
-            and not _SAFE_DATA_RE.search(sentence)
+            and not _NEGATED_REQUEST_RE.search(sentence)
         ):
             findings.append(
                 QualityFinding(
@@ -238,10 +252,14 @@ def audit_output(
         sentence for sentence in _sentences(answer) if _DECISION_RE.search(sentence)
     ]
     has_positive = any(
-        _POSITIVE_DECISION_RE.search(sentence) for sentence in decision_sentences
+        _POSITIVE_DECISION_RE.search(sentence)
+        and not _NEGATIVE_DECISION_RE.search(sentence)
+        for sentence in decision_sentences
     )
     has_negative = any(
-        _NEGATIVE_DECISION_RE.search(sentence) for sentence in decision_sentences
+        _NEGATIVE_DECISION_RE.search(sentence)
+        and not _POSITIVE_DECISION_RE.search(sentence)
+        for sentence in decision_sentences
     )
     if has_positive and has_negative:
         findings.append(

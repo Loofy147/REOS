@@ -12,6 +12,8 @@ from langgraph.graph import END, START, StateGraph
 
 from reos.quality import (
     EvidenceReference,
+    FindingCode,
+    QualityFinding,
     QualityReport,
     QualityStatus,
     audit_output,
@@ -34,7 +36,7 @@ class AthenaState(TypedDict, total=False):
     analysis: str
     critique: str
     answer: str
-    turns: list[dict[str, str]]
+    turns: list[dict[str, Any]]
     evidence_references: list[dict[str, str]]
     quality_report: dict[str, object]
 
@@ -50,6 +52,72 @@ class AthenaResponse:
     answer: str
     turns_count: int
     quality_report: QualityReport
+    turn_history: tuple["AthenaTurnRecord", ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AthenaTurnRecord:
+    """Auditable record of one completed turn, including the evidence used."""
+
+    request: str
+    response: str
+    quality_report: QualityReport
+    evidence_references: tuple[EvidenceReference, ...]
+
+
+def _turn_record_from_state(turn: dict[str, Any]) -> AthenaTurnRecord:
+    raw_quality = turn.get("quality_report")
+    if isinstance(raw_quality, dict):
+        try:
+            quality = QualityReport.from_state(raw_quality)
+        except (KeyError, TypeError, ValueError):
+            quality = QualityReport(
+                QualityStatus.WARN,
+                (
+                    QualityFinding(
+                        FindingCode.LEGACY_TURN_NOT_AUDITED,
+                        QualityStatus.WARN,
+                        "The stored quality report is malformed; this historical turn must be reviewed manually.",
+                    ),
+                ),
+            )
+    else:
+        quality = QualityReport(
+            QualityStatus.WARN,
+            (
+                QualityFinding(
+                    FindingCode.LEGACY_TURN_NOT_AUDITED,
+                    QualityStatus.WARN,
+                    "This turn predates per-turn quality auditing. It was not retroactively validated.",
+                ),
+            ),
+        )
+
+    references: list[EvidenceReference] = []
+    raw_references = turn.get("evidence_references", [])
+    if isinstance(raw_references, list):
+        for item in raw_references:
+            if not isinstance(item, dict):
+                continue
+            required = ("reference_id", "source", "observed_at", "locator", "excerpt")
+            if not all(isinstance(item.get(key), str) for key in required):
+                continue
+            references.append(
+                EvidenceReference(
+                    reference_id=item["reference_id"],
+                    source=item["source"],
+                    observed_at=item["observed_at"],
+                    locator=item["locator"],
+                    excerpt=item["excerpt"],
+                )
+            )
+
+    return AthenaTurnRecord(
+        request=str(turn.get("request", "")),
+        response=str(turn.get("response", "")),
+        quality_report=quality,
+        evidence_references=tuple(references),
+    )
 
 
 ANALYSIS_SYSTEM_PROMPT = """You are ATHENA, a rigorous strategic reasoning agent.
@@ -318,7 +386,12 @@ class AthenaAgent:
         def record_turn(state: AthenaState, config: RunnableConfig) -> dict[str, Any]:
             turns = list(state.get("turns", []))
             turns.append(
-                {"request": state["request"], "response": state["answer"]}
+                {
+                    "request": state["request"],
+                    "response": state["answer"],
+                    "quality_report": state.get("quality_report", {}),
+                    "evidence_references": list(state.get("evidence_references", [])),
+                }
             )
             return {"turns": turns}
 
@@ -412,4 +485,9 @@ class AthenaAgent:
             answer=result.get("answer", ""),
             turns_count=len(turns),
             quality_report=QualityReport.from_state(quality_state),
+            turn_history=tuple(
+                _turn_record_from_state(turn)
+                for turn in turns
+                if isinstance(turn, dict)
+            ),
         )

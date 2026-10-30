@@ -1,3 +1,1 @@
-"""REOS: provider-neutral engineering orchestration primitives."""
-
-__version__ = "0.1.0"
+"""REOS: provider-neutral engineering orchestration primitives."""\n\n__version__ = "0.2.0"\n

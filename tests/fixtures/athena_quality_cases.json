@@ -32,7 +32,7 @@
       "request": "قيّم إطلاق منتج رقمي في الجزائر.",
       "analysis": "",
       "critique": "",
-      "answer": "UNKNOWN: لا نملك بيانات كافية. Decision: نفّذ اختباراً محدوداً. Assumptions: المشكلة متكررة لدى الشريحة. HYPOTHESIS: قد يفضّل بعض العملاء الدفع النقدي. Falsification test: قارن سلوك الدفع الملاحظ في الشريحة.",
+      "answer": "UNKNOWN: لا نملك بيانات كافية عن الطلب أو سلوك الدفع. Decision: نفّذ اختباراً محدوداً. Assumptions: المشكلة متكررة لدى الشريحة المستهدفة. HYPOTHESIS: قد يفضّل بعض العملاء في الجزائر الدفع النقدي. Experiment card: Hypothesis: the target segment prefers cash settlement. Intervention: offer two lawful payment methods without steering users. Observable: the method selected and completed. Metric: completed payment by method, with a disclosed denominator. Decision rule: compare observed behavior with the product's break-even requirements; no cutoff is preselected. Falsification test: the hypothesis is weakened if the target segment repeatedly completes an alternative payment method.",
       "expected_status": "PASS",
       "expected_findings": []
     },
@@ -54,7 +54,7 @@
       "request": "Assess the business pilot.",
       "analysis": "",
       "critique": "",
-      "answer": "Decision: run the pilot. Use aggregated, anonymized sales totals; do not collect raw records. Falsification test: measure repeated completion of the core workflow.",
+      "answer": "UNKNOWN: paid demand is not yet measured. Decision: run the pilot. Assumptions: the core workflow solves a recurring problem for the target segment. HYPOTHESIS: users will complete the core workflow repeatedly. Intervention: provide a limited concierge pilot. Observable: repeated completion of the target workflow. Metric: completed workflows, repeat usage, and paid conversion. Decision rule: compare observed contribution margin with service and acquisition cost; do not invent a cutoff. Use aggregated, anonymized sales totals; do not collect raw records. Falsification test: stop or redesign if users do not complete the core workflow or the measured economics cannot support delivery.",
       "expected_status": "PASS",
       "expected_findings": []
     },

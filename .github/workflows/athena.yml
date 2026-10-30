@@ -29,10 +29,13 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install package and verification dependencies
+      - name: Install runtime and all supported provider adapters
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[lang,dev]"
+          python -m pip install -e ".[lang,openai,anthropic,google-genai,dev]"
+      - name: Verify provider adapter imports
+        run: |
+          python -c "import langchain_openai, langchain_anthropic, langchain_google_genai; print('OpenAI, Anthropic, and Gemini adapters import successfully')"
       - name: Run unit and integration tests
         run: python -m pytest -q
 

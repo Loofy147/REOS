@@ -75,11 +75,25 @@ def test_established_claim_with_registered_evidence_reference_is_not_flagged() -
         critique="The evidence is limited.",
         answer="ESTABLISHED: The cited regulation applies [E1].",
         evidence_references=(
-            EvidenceReference("E1", "Official source", "2026-10-30"),
+            EvidenceReference("E1", "Official source", "2026-10-30", "https://example.org/source"),
         ),
     )
 
     assert FindingCode.UNSOURCED_ESTABLISHED_CLAIM.value not in codes(report)
+
+
+def test_evidence_reference_requires_a_locator() -> None:
+    report = audit_output(
+        request="Assess the launch.",
+        analysis="The market is unknown.",
+        critique="The evidence is limited.",
+        answer="ESTABLISHED: The cited regulation applies [E1].",
+        evidence_references=(
+            EvidenceReference("E1", "Official source", "2026-10-30", ""),
+        ),
+    )
+
+    assert FindingCode.UNSOURCED_ESTABLISHED_CLAIM.value in codes(report)
 
 
 def test_unregistered_citation_token_does_not_prove_established_claim() -> None:

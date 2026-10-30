@@ -16,6 +16,10 @@ class ChatModel(Protocol):
         ...
 
 
+class AthenaOutputError(RuntimeError):
+    """Raised when an agent stage returns no usable content."""
+
+
 class AthenaState(TypedDict, total=False):
     request: str
     analysis: str
@@ -91,6 +95,14 @@ def _content_text(message: Any) -> str:
     return str(content).strip()
 
 
+def _required_content_text(message: Any, *, stage: str) -> str:
+    """Reject empty stage outputs so an incomplete graph cannot look successful."""
+    content = _content_text(message)
+    if not content:
+        raise AthenaOutputError(f"ATHENA {stage} stage returned empty content.")
+    return content
+
+
 def _history_messages(turns: list[dict[str, str]]) -> list[HumanMessage]:
     """Expose only prior user requests and published answers to the same session."""
     messages: list[HumanMessage] = []
@@ -143,7 +155,7 @@ class AthenaAgent:
                 HumanMessage(content=state["request"]),
             ]
             result = analysis_model.invoke(messages, config=config)
-            return {"analysis": _content_text(result)}
+            return {"analysis": _required_content_text(result, stage="analysis")}
 
         def challenge(state: AthenaState, config: RunnableConfig) -> dict[str, str]:
             messages = [
@@ -156,7 +168,7 @@ class AthenaAgent:
                 ),
             ]
             result = review_model.invoke(messages, config=config)
-            return {"critique": _content_text(result)}
+            return {"critique": _required_content_text(result, stage="review")}
 
         def synthesize(state: AthenaState, config: RunnableConfig) -> dict[str, Any]:
             messages = [
@@ -170,7 +182,7 @@ class AthenaAgent:
                 ),
             ]
             result = analysis_model.invoke(messages, config=config)
-            answer = _content_text(result)
+            answer = _required_content_text(result, stage="synthesis")
             turns = list(state.get("turns", []))
             turns.append({"request": state["request"], "response": answer})
             return {"answer": answer, "turns": turns}
